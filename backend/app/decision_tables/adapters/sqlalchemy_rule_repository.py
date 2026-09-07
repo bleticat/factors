@@ -18,6 +18,7 @@ def _to_domain(row: RuleRow) -> Rule:
         decision_table_id=row.decision_table_id,
         output=row.output,
         title=row.title,
+        order_index=row.order_index,
         factor_values=[
             RuleAssignment(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
         ],
@@ -35,6 +36,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             decision_table_id=rule.decision_table_id,
             output=rule.output,
             title=rule.title,
+            order_index=rule.order_index,
             matched_count=rule.matched_count,
             applied_at=rule.applied_at,
         )
@@ -53,10 +55,28 @@ class SqlAlchemyRuleRepository(RuleRepository):
             decision_table_id=row.decision_table_id,
             output=row.output,
             title=row.title,
+            order_index=row.order_index,
             factor_values=list(rule.factor_values),
             matched_count=row.matched_count,
             applied_at=row.applied_at,
         )
+
+    async def save(self, rule: Rule) -> None:
+        assert rule.id is not None
+        row = await self._session.get(RuleRow, rule.id)
+        assert row is not None
+        row.output = rule.output
+        row.title = rule.title
+        row.order_index = rule.order_index
+
+        await self._session.execute(delete(RuleValueRow).where(RuleValueRow.rule_id == rule.id))
+        self._session.add_all(
+            [
+                RuleValueRow(rule_id=rule.id, factor_id=a.factor_id, factor_value_id=a.factor_value_id)
+                for a in rule.factor_values
+            ]
+        )
+        await self._session.flush()
 
     async def get(self, table_id: int, rule_id: int) -> Rule | None:
         stmt = (
@@ -72,7 +92,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             select(RuleRow)
             .where(RuleRow.decision_table_id == table_id)
             .options(selectinload(RuleRow.values))
-            .order_by(RuleRow.id)
+            .order_by(RuleRow.order_index, RuleRow.id)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_to_domain(row) for row in rows]

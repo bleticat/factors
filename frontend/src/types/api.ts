@@ -89,10 +89,14 @@ export interface Rule {
   decision_table_id: number
   output: string
   title: string | null
+  order_index: number
   factor_values: RuleValue[]
   matched_count: number
   applied_at: string | null
   created_at: string
+  // How many of this rule's own matched rows are shadowed by a rule later
+  // in apply order — i.e. currently show a different rule's output instead.
+  shadowed_count: number
 }
 
 export interface RuleRef {

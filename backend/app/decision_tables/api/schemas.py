@@ -67,3 +67,13 @@ class CreateRuleRequest(BaseModel):
     factor_values: list[tuple[int, int]] = Field(default_factory=list)
     output: str
     title: str | None = None
+
+
+class UpdateRuleRequest(BaseModel):
+    output: str | None = None
+    title: str | None = None
+    factor_values: list[tuple[int, int]] | None = None
+
+
+class ReorderRulesRequest(BaseModel):
+    ordered_rule_ids: list[int] = Field(default_factory=list)

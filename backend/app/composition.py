@@ -84,6 +84,10 @@ from app.decision_tables.commands.reapply_rules import (
     ReapplyRulesCommand,
     ReapplyRulesHandler,
 )
+from app.decision_tables.commands.reorder_rules import (
+    ReorderRulesCommand,
+    ReorderRulesHandler,
+)
 from app.decision_tables.commands.request_generation import (
     RequestGenerationCommand,
     RequestGenerationHandler,
@@ -99,6 +103,10 @@ from app.decision_tables.commands.update_factor import (
 from app.decision_tables.commands.update_factor_value import (
     UpdateFactorValueCommand,
     UpdateFactorValueHandler,
+)
+from app.decision_tables.commands.update_rule import (
+    UpdateRuleCommand,
+    UpdateRuleHandler,
 )
 from app.decision_tables.queries.evaluate_combinations import (
     EvaluateCombinationsHandler,
@@ -208,8 +216,18 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
             SqlAlchemyRuleRepository(uow),
             SqlAlchemyCombinationRepository(uow),
         ),
+        UpdateRuleCommand: lambda uow: UpdateRuleHandler(
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyRuleRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
+        ),
         DeleteRuleCommand: lambda uow: DeleteRuleHandler(SqlAlchemyRuleRepository(uow)),
         ReapplyRulesCommand: lambda uow: ReapplyRulesHandler(
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyRuleRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
+        ),
+        ReorderRulesCommand: lambda uow: ReorderRulesHandler(
             SqlAlchemyDecisionTableRepository(uow),
             SqlAlchemyRuleRepository(uow),
             SqlAlchemyCombinationRepository(uow),
@@ -243,6 +261,7 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
         ListRulesQuery: lambda scope: ListRulesHandler(
             SqlAlchemyDecisionTableQueries(scope),
             SqlAlchemyRuleQueries(scope),
+            SqlAlchemyCombinationQueries(scope),
         ),
         ListRuleOverlapsQuery: lambda scope: ListRuleOverlapsHandler(
             SqlAlchemyDecisionTableQueries(scope),

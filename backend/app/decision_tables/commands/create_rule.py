@@ -8,9 +8,8 @@ from app.decision_tables.domain.errors import (
     DecisionTableNotFoundError,
     DuplicateFactorInAssignmentError,
     EmptyNameError,
-    RuleTooGeneralError,
 )
-from app.decision_tables.domain.rule import Rule, RuleAssignment, is_at_least_as_general
+from app.decision_tables.domain.rule import Rule, RuleAssignment
 from app.decision_tables.ports.combination_repository import CombinationRepository
 from app.decision_tables.ports.decision_table_repository import DecisionTableRepository
 from app.decision_tables.ports.rule_repository import RuleRepository
@@ -55,10 +54,6 @@ class CreateRuleHandler:
             for factor_id, factor_value_id in request.factor_values
         ]
         existing_rules = await self._rules.list_for_table(request.table_id)
-        for existing in existing_rules:
-            if is_at_least_as_general(new_factor_values, existing.factor_values):
-                assert existing.id is not None
-                raise RuleTooGeneralError(conflicting_rule_id=existing.id)
 
         title = request.title.strip() if request.title and request.title.strip() else None
         rule = Rule(
@@ -66,6 +61,7 @@ class CreateRuleHandler:
             decision_table_id=request.table_id,
             output=request.output,
             title=title,
+            order_index=len(existing_rules),  # append at the end (spec 008); drag to reorder afterward
             factor_values=new_factor_values,
         )
         rule = await self._rules.add(rule)

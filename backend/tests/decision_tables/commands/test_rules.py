@@ -14,7 +14,6 @@ from app.decision_tables.domain.errors import (
     DuplicateFactorInAssignmentError,
     EmptyNameError,
     RuleNotFoundError,
-    RuleTooGeneralError,
     UnknownFactorInFilterError,
     UnknownFactorValueInFilterError,
 )
@@ -265,28 +264,31 @@ async def test_create_rule_allows_incomparable_assignments(mediator):
     assert os_rule.matched_count == 6
 
 
-async def test_create_rule_rejects_a_broader_rule_after_a_narrower_one(mediator):
+async def test_create_rule_allows_a_broader_rule_after_a_narrower_one(mediator):
+    # Spec 009: generality is no longer enforced — a rule more general than
+    # an existing one is allowed to be created; it just ends up shadowing
+    # (or being shadowed by) the other, surfaced via `shadowed_count`
+    # (see test_list_rules_reports_shadowed_count below) rather than rejected.
     fixture = await build_standard_table(mediator)
     table_id = fixture["table_id"]
     browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
     os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
     await generate_and_wait(mediator, table_id)
 
-    narrow = await mediator.execute(
+    await mediator.execute(
         CreateRuleCommand(
             table_id=table_id,
             factor_values=((browser_id, chrome_id), (os_id, windows_id)),
             output="narrow",
         )
     )
-    with pytest.raises(RuleTooGeneralError) as exc_info:
-        await mediator.execute(
-            CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
-        )
-    assert exc_info.value.conflicting_rule_id == narrow.id
+    broad = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+    )
+    assert broad.matched_count == 6
 
 
-async def test_create_rule_rejects_a_duplicate_assignment(mediator):
+async def test_create_rule_allows_a_duplicate_assignment(mediator):
     fixture = await build_standard_table(mediator)
     table_id = fixture["table_id"]
     browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
@@ -294,25 +296,101 @@ async def test_create_rule_rejects_a_duplicate_assignment(mediator):
     await mediator.execute(
         CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="first")
     )
-    with pytest.raises(RuleTooGeneralError):
-        await mediator.execute(
-            CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="second")
-        )
+    second = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="second")
+    )
+    assert second.id is not None
 
 
-async def test_create_rule_rejects_an_empty_assignment_after_any_rule_exists(mediator):
+async def test_create_rule_allows_an_empty_assignment_after_any_rule_exists(mediator):
     fixture = await build_standard_table(mediator)
     table_id = fixture["table_id"]
     browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    await generate_and_wait(mediator, table_id)
 
     await mediator.execute(
         CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="specific")
     )
-    with pytest.raises(RuleTooGeneralError):
-        await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
+    default = await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
+    assert default.matched_count == 18
 
 
-async def test_create_rule_generality_conflict_is_scoped_to_its_own_table(mediator):
+async def test_list_rules_reports_shadowed_count(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    specific = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="specific")
+    )
+    # Created *after* `specific` and broader — every one of `specific`'s 6
+    # rows is also matched by this rule, and it wins on all of them.
+    await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    specific_dto = next(r for r in page.items if r.id == specific.id)
+    assert specific_dto.shadowed_count == 6  # fully shadowed: every matched row, hidden
+
+    default_dto = next(r for r in page.items if r.output == "default")
+    assert default_dto.shadowed_count == 0  # nothing comes after it
+
+
+async def test_list_rules_reports_partial_shadowing(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    broad = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+    )
+    # Refines `broad` on only 2 of its 6 rows.
+    await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+            output="narrow",
+        )
+    )
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    broad_dto = next(r for r in page.items if r.id == broad.id)
+    assert broad_dto.matched_count == 6
+    assert broad_dto.shadowed_count == 2  # only the rows the narrower rule also matches
+
+
+async def test_list_rules_reports_shadowing_from_the_union_of_several_later_rules(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id = fixture["os_id"]
+    windows_id, mac_id = fixture["os_values"][0], fixture["os_values"][1]
+    await generate_and_wait(mediator, table_id)
+
+    broad = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+    )
+    # Neither of these alone covers all 6 of `broad`'s rows, but together
+    # they cover 4 of them (2 login states x {windows, mac}).
+    await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id, factor_values=((browser_id, chrome_id), (os_id, windows_id)), output="windows"
+        )
+    )
+    await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id, factor_values=((browser_id, chrome_id), (os_id, mac_id)), output="mac"
+        )
+    )
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    broad_dto = next(r for r in page.items if r.id == broad.id)
+    assert broad_dto.shadowed_count == 4
+
+
+async def test_rule_creation_never_touches_another_table(mediator):
     fixture_a = await build_standard_table(mediator)
     fixture_b = await build_standard_table(mediator)
     browser_id, chrome_id = fixture_a["browser_id"], fixture_a["browser_values"][0]
@@ -325,24 +403,6 @@ async def test_create_rule_generality_conflict_is_scoped_to_its_own_table(mediat
     # A table-wide default on a *different* table is unaffected by fixture_a's rule.
     default = await mediator.execute(CreateRuleCommand(table_id=fixture_b["table_id"], output="b-default"))
     assert default.id is not None
-
-
-async def test_rejected_rule_creation_does_not_persist_or_apply_anything(mediator):
-    fixture = await build_standard_table(mediator)
-    table_id = fixture["table_id"]
-    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
-    await generate_and_wait(mediator, table_id)
-
-    narrow = await mediator.execute(
-        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="narrow")
-    )
-    with pytest.raises(RuleTooGeneralError):
-        await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
-
-    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
-    assert page.total == 1
-    assert page.items[0].id == narrow.id
-    assert page.items[0].matched_count == 6  # unaffected by the rejected attempt
 
 
 async def test_delete_rule_for_other_table_raises_not_found(mediator):

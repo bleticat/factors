@@ -1,5 +1,7 @@
 # Reject More-General Rules
 
+**Superseded by [009](./009-allow-any-order-surface-shadowed-rules.md).** In practice, blocking rule creation/editing/reordering whenever one rule was "too general" relative to another turned out to be too restrictive — legitimate reordering and editing got rejected often enough that it read as reordering "having no effect." 009 removes the rejection entirely: any assignment/order is now allowed, and a rule that ends up hidden behind a more general later rule is surfaced as **shadowed** instead of prevented. This document is kept for the historical rationale; the behavior it describes is no longer in effect.
+
 Primary context: `decision_tables`
 
 Affected contexts: `decision_tables`

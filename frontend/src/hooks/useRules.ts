@@ -35,6 +35,40 @@ export function useCreateRule(tableId: number) {
   })
 }
 
+export function useUpdateRule(tableId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ruleId,
+      output,
+      title,
+      factorValues,
+    }: {
+      ruleId: number
+      output?: string
+      title?: string | null
+      factorValues?: [number, number][]
+    }) => api.updateRule(tableId, ruleId, { output, title, factorValues }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['combinations', tableId] })
+    },
+  })
+}
+
+export function useReorderRules(tableId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedRuleIds: number[]) => api.reorderRules(tableId, orderedRuleIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['combinations', tableId] })
+    },
+  })
+}
+
 export function useDeleteRule(tableId: number) {
   const queryClient = useQueryClient()
   return useMutation({

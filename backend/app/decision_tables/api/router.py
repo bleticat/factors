@@ -32,12 +32,14 @@ from app.decision_tables.commands.delete_factor_value import DeleteFactorValueCo
 from app.decision_tables.commands.delete_rule import DeleteRuleCommand
 from app.decision_tables.commands.patch_combination import PatchCombinationCommand
 from app.decision_tables.commands.reapply_rules import ReapplyRulesCommand
+from app.decision_tables.commands.reorder_rules import ReorderRulesCommand
 from app.decision_tables.commands.request_generation import RequestGenerationCommand
 from app.decision_tables.commands.update_decision_table import (
     UpdateDecisionTableCommand,
 )
 from app.decision_tables.commands.update_factor import UpdateFactorCommand
 from app.decision_tables.commands.update_factor_value import UpdateFactorValueCommand
+from app.decision_tables.commands.update_rule import UpdateRuleCommand
 from app.decision_tables.queries.evaluate_combinations import EvaluateCombinationsQuery
 from app.decision_tables.queries.get_decision_table import GetDecisionTableQuery
 from app.decision_tables.queries.get_generation_job import GetGenerationJobQuery
@@ -315,6 +317,27 @@ async def list_rule_overlaps(
     )
 
 
+@router.patch("/{table_id}/rules/{rule_id}")
+async def update_rule(
+    table_id: int,
+    rule_id: int,
+    body: schemas.UpdateRuleRequest,
+    mediator: Mediator = Depends(get_mediator),
+):
+    fields = body.model_fields_set
+    return await mediator.execute(
+        UpdateRuleCommand(
+            table_id=table_id,
+            rule_id=rule_id,
+            output=body.output,
+            title=body.title,
+            title_set="title" in fields,
+            factor_values=tuple(body.factor_values) if body.factor_values is not None else None,
+            factor_values_set="factor_values" in fields,
+        )
+    )
+
+
 @router.delete("/{table_id}/rules/{rule_id}", status_code=204)
 async def delete_rule(table_id: int, rule_id: int, mediator: Mediator = Depends(get_mediator)) -> None:
     await mediator.execute(DeleteRuleCommand(table_id=table_id, rule_id=rule_id))
@@ -323,3 +346,12 @@ async def delete_rule(table_id: int, rule_id: int, mediator: Mediator = Depends(
 @router.post("/{table_id}/rules/reapply")
 async def reapply_rules(table_id: int, mediator: Mediator = Depends(get_mediator)):
     return await mediator.execute(ReapplyRulesCommand(table_id=table_id))
+
+
+@router.post("/{table_id}/rules/reorder")
+async def reorder_rules(
+    table_id: int, body: schemas.ReorderRulesRequest, mediator: Mediator = Depends(get_mediator)
+):
+    return await mediator.execute(
+        ReorderRulesCommand(table_id=table_id, ordered_rule_ids=tuple(body.ordered_rule_ids))
+    )

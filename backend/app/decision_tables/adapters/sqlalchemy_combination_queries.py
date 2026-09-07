@@ -137,16 +137,21 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
         ).scalars().all()
         combos_by_id = {row.id: _to_dto(row) for row in combo_rows}
 
-        matching_rule_ids: dict[int, list[int]] = defaultdict(list)
+        matching_rule_ids: dict[int, set[int]] = defaultdict(set)
         tag_rows = await self._session.execute(
             select(matches.c.combination_id, matches.c.rule_id).where(
                 matches.c.combination_id.in_(page_ids)
             )
         )
         for combination_id, rule_id in tag_rows:
-            matching_rule_ids[combination_id].append(rule_id)
+            matching_rule_ids[combination_id].add(rule_id)
 
+        # `rules` is given in apply order (spec 008's order_index, not rule
+        # id) — sort each row's tags by *that* order so the last one shown
+        # is always the rule that actually wins after a reapply, even after
+        # rules have been reordered.
         rules_by_id = {rule.rule_id: rule for rule in rules}
+        apply_position = {rule.rule_id: position for position, rule in enumerate(rules)}
         items = [
             CombinationOverlapDTO(
                 combination=combos_by_id[combination_id],
@@ -156,9 +161,46 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
                         output=rules_by_id[rule_id].output,
                         title=rules_by_id[rule_id].title,
                     )
-                    for rule_id in sorted(set(matching_rule_ids[combination_id]))
+                    for rule_id in sorted(matching_rule_ids[combination_id], key=apply_position.get)
                 ],
             )
             for combination_id in page_ids  # already ordered by combination id
         ]
         return Page(items=items, total=total, limit=page.limit, offset=page.offset)
+
+    async def count_shadowed_matches(
+        self, table_id: int, ordered_rules: list[RuleFilterInput]
+    ) -> dict[int, int]:
+        if len(ordered_rules) < 2:
+            return {}
+
+        # Same per-rule tagged match set as `list_matched_by_multiple_rules`,
+        # but tagged with position (apply order) instead of rule id, so a
+        # later-position match can be detected with a plain `>` comparison.
+        per_rule_matches = [
+            apply_combination_filter(
+                select(
+                    literal(rule.rule_id).label("rule_id"),
+                    literal(position).label("position"),
+                    CombinationRow.id.label("combination_id"),
+                ),
+                table_id,
+                CombinationFilter(factor_values=rule.factor_values),
+            )
+            for position, rule in enumerate(ordered_rules)
+        ]
+        matches = union_all(*per_rule_matches).subquery("shadow_matches")
+        later = matches.alias("later_matches")
+
+        stmt = (
+            select(matches.c.rule_id, func.count(func.distinct(matches.c.combination_id)))
+            .select_from(matches)
+            .join(
+                later,
+                (later.c.combination_id == matches.c.combination_id)
+                & (later.c.position > matches.c.position),
+            )
+            .group_by(matches.c.rule_id)
+        )
+        rows = await self._session.execute(stmt)
+        return dict(rows.all())

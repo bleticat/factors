@@ -7,9 +7,9 @@ from app.decision_tables.domain.rule import Rule
 
 
 class RuleRepository(ABC):
-    """Write-side port for `Rule`. `list_for_table` returns id order — the
-    same order rules are (re)applied in (see spec 005's "later rule wins"
-    replay rule)."""
+    """Write-side port for `Rule`. `list_for_table` returns `order_index`
+    order — the same order rules are (re)applied in (see spec 005's "later
+    rule wins" replay rule and spec 008's explicit, editable ordering)."""
 
     @abstractmethod
     async def add(self, rule: Rule) -> Rule: ...
@@ -19,6 +19,13 @@ class RuleRepository(ABC):
 
     @abstractmethod
     async def list_for_table(self, table_id: int) -> list[Rule]: ...
+
+    @abstractmethod
+    async def save(self, rule: Rule) -> None:
+        """Persist `output`/`title`/`order_index`/`factor_values` for an
+        already-existing rule (spec 008) — a full replace of its assignment,
+        not a diff, since the whole `factor_values` list is always supplied
+        by the caller."""
 
     @abstractmethod
     async def delete(self, table_id: int, rule_id: int) -> bool:

@@ -23,13 +23,15 @@ function buildValueLookup(table: DecisionTable): Map<string, string> {
 // A rule matches a row when every (factor_id, factor_value_id) pair in its
 // assignment is present on the row — an unassigned factor is a wildcard.
 // Mirrors the backend's rule-application/overlap predicate (specs 005/006).
-// Returned in id (creation) order — the last entry is the one that
-// currently wins a reapply.
+// Returned in apply order (order_index, spec 008/009) — the last entry is
+// the one that currently wins a reapply. Rules can be dragged to a new
+// order independently of their id, so sorting by id here would show the
+// wrong row as the (bold) winner.
 function matchingRules(rules: Rule[], combo: Combination): Rule[] {
   const comboPairs = new Set(combo.values.map((v) => `${v.factor_id}:${v.factor_value_id}`))
   return rules
     .filter((rule) => rule.factor_values.every((fv) => comboPairs.has(`${fv.factor_id}:${fv.factor_value_id}`)))
-    .sort((a, b) => a.id - b.id)
+    .sort((a, b) => a.order_index - b.order_index)
 }
 
 export default function CombinationsTable({ table, combinations, rules, onPatch }: Props) {
@@ -122,15 +124,27 @@ function CombinationRow({
       <td>
         {matched.length === 0 && <span className="muted">—</span>}
         {matched.length > 0 && (
-          <span title={matched.length > 1 ? 'Multiple rules match this row — the last one wins.' : undefined}>
-            {matched.map((rule, i) => (
-              <span key={rule.id}>
-                {i > 0 && ', '}
-                <span style={i === matched.length - 1 && matched.length > 1 ? { fontWeight: 'bold' } : undefined}>
-                  {rule.title ?? rule.output}
+          <span title={matched.length > 1 ? 'Multiple rules match this row — the last one wins, the rest are hidden.' : undefined}>
+            {matched.map((rule, i) => {
+              const isWinner = i === matched.length - 1
+              return (
+                <span key={rule.id}>
+                  {i > 0 && ', '}
+                  <span
+                    className={isWinner ? undefined : 'muted'}
+                    style={
+                      isWinner && matched.length > 1
+                        ? { fontWeight: 'bold' }
+                        : isWinner
+                          ? undefined
+                          : { textDecoration: 'line-through' }
+                    }
+                  >
+                    {rule.title ?? rule.output}
+                  </span>
                 </span>
-              </span>
-            ))}
+              )
+            })}
             {matched.length > 1 && ' ⚠︎'}
           </span>
         )}

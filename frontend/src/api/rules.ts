@@ -24,10 +24,28 @@ export function createRule(
   })
 }
 
+export function updateRule(
+  tableId: number,
+  ruleId: number,
+  input: { output?: string; title?: string | null; factorValues?: [number, number][] },
+) {
+  return api.patch<RuleRef>(`/decision-tables/${tableId}/rules/${ruleId}`, {
+    output: input.output,
+    title: input.title,
+    factor_values: input.factorValues,
+  })
+}
+
 export function deleteRule(tableId: number, ruleId: number) {
   return api.delete<void>(`/decision-tables/${tableId}/rules/${ruleId}`)
 }
 
 export function reapplyRules(tableId: number) {
   return api.post<ReapplyRulesResult>(`/decision-tables/${tableId}/rules/reapply`)
+}
+
+export function reorderRules(tableId: number, orderedRuleIds: number[]) {
+  return api.post<ReapplyRulesResult>(`/decision-tables/${tableId}/rules/reorder`, {
+    ordered_rule_ids: orderedRuleIds,
+  })
 }

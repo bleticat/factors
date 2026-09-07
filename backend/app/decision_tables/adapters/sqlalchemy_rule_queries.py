@@ -16,6 +16,7 @@ def _to_dto(row: RuleRow) -> RuleDTO:
         decision_table_id=row.decision_table_id,
         output=row.output,
         title=row.title,
+        order_index=row.order_index,
         factor_values=[
             RuleValueDTO(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
         ],
@@ -37,7 +38,7 @@ class SqlAlchemyRuleQueries(RuleQueries):
             select(RuleRow)
             .where(RuleRow.decision_table_id == table_id)
             .options(selectinload(RuleRow.values))
-            .order_by(RuleRow.id)
+            .order_by(RuleRow.order_index, RuleRow.id)
             .limit(page.limit)
             .offset(page.offset)
         )
@@ -49,7 +50,7 @@ class SqlAlchemyRuleQueries(RuleQueries):
             select(RuleRow)
             .where(RuleRow.decision_table_id == table_id)
             .options(selectinload(RuleRow.values))
-            .order_by(RuleRow.id)
+            .order_by(RuleRow.order_index, RuleRow.id)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return [_to_dto(row) for row in rows]

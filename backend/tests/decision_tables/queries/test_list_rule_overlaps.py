@@ -1,4 +1,5 @@
 from app.decision_tables.commands.create_rule import CreateRuleCommand
+from app.decision_tables.commands.reorder_rules import ReorderRulesCommand
 from app.decision_tables.queries.list_rule_overlaps import ListRuleOverlapsQuery
 from app.shared.pagination import PageRequest
 from tests.decision_tables.helpers import build_standard_table, generate_and_wait
@@ -26,9 +27,39 @@ async def test_overlap_returns_only_rows_matched_by_both_rules(mediator):
     assert page.total == 2  # Chrome x Windows x {in, out}
     for item in page.items:
         rule_ids = [r.id for r in item.matching_rules]
-        assert rule_ids == [broad.id, narrow.id]  # ordered by id; narrow (last) is the winner
+        assert rule_ids == [broad.id, narrow.id]  # ordered by apply order; narrow (last) is the winner
         outputs = {r.output for r in item.matching_rules}
         assert outputs == {"broad", "narrow"}
+
+
+async def test_overlap_winner_follows_apply_order_after_a_reorder(mediator):
+    # Regression: `matching_rules` must be ordered by each rule's current
+    # apply position (order_index), not by rule id — otherwise the winner
+    # shown here would silently disagree with what a reapply actually sets.
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    broad = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+    )
+    narrow = await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+            output="narrow",
+        )
+    )
+    # Reorder so `broad` (the lower id) now applies *after* `narrow`.
+    await mediator.execute(ReorderRulesCommand(table_id=table_id, ordered_rule_ids=(narrow.id, broad.id)))
+
+    page = await mediator.execute(ListRuleOverlapsQuery(table_id=table_id, page=PageRequest(limit=100)))
+    assert page.total == 2
+    for item in page.items:
+        rule_ids = [r.id for r in item.matching_rules]
+        assert rule_ids == [narrow.id, broad.id]  # broad now applies last, so it's the winner
 
 
 async def test_overlap_excludes_rows_only_matched_by_a_disjoint_rule(mediator):
@@ -126,8 +157,6 @@ async def test_overlap_empty_when_never_generated(mediator):
     browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
     os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
 
-    # Incomparable assignments (different factors) — both allowed under
-    # spec 007's ordering check regardless of creation order.
     await mediator.execute(
         CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="a")
     )
