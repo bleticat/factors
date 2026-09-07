@@ -23,6 +23,10 @@ from app.decision_tables.adapters.sqlalchemy_generation_job_queries import (
 from app.decision_tables.adapters.sqlalchemy_generation_job_repository import (
     SqlAlchemyGenerationJobRepository,
 )
+from app.decision_tables.adapters.sqlalchemy_rule_queries import SqlAlchemyRuleQueries
+from app.decision_tables.adapters.sqlalchemy_rule_repository import (
+    SqlAlchemyRuleRepository,
+)
 from app.decision_tables.commands.add_factor import AddFactorCommand, AddFactorHandler
 from app.decision_tables.commands.add_factor_value import (
     AddFactorValueCommand,
@@ -40,6 +44,10 @@ from app.decision_tables.commands.create_decision_table import (
     CreateDecisionTableCommand,
     CreateDecisionTableHandler,
 )
+from app.decision_tables.commands.create_rule import (
+    CreateRuleCommand,
+    CreateRuleHandler,
+)
 from app.decision_tables.commands.delete_decision_table import (
     DeleteDecisionTableCommand,
     DeleteDecisionTableHandler,
@@ -51,6 +59,10 @@ from app.decision_tables.commands.delete_factor import (
 from app.decision_tables.commands.delete_factor_value import (
     DeleteFactorValueCommand,
     DeleteFactorValueHandler,
+)
+from app.decision_tables.commands.delete_rule import (
+    DeleteRuleCommand,
+    DeleteRuleHandler,
 )
 from app.decision_tables.commands.generate_combinations_batch import (
     GenerateCombinationsBatchCommand,
@@ -67,6 +79,10 @@ from app.decision_tables.commands.mark_stale_generation_jobs_failed import (
 from app.decision_tables.commands.patch_combination import (
     PatchCombinationCommand,
     PatchCombinationHandler,
+)
+from app.decision_tables.commands.reapply_rules import (
+    ReapplyRulesCommand,
+    ReapplyRulesHandler,
 )
 from app.decision_tables.commands.request_generation import (
     RequestGenerationCommand,
@@ -108,6 +124,7 @@ from app.decision_tables.queries.list_factors import (
     ListFactorsHandler,
     ListFactorsQuery,
 )
+from app.decision_tables.queries.list_rules import ListRulesHandler, ListRulesQuery
 from app.decision_tables.queries.list_stale_running_generation_jobs import (
     ListStaleRunningGenerationJobsHandler,
     ListStaleRunningGenerationJobsQuery,
@@ -139,6 +156,7 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
             SqlAlchemyDecisionTableRepository(uow),
             SqlAlchemyGenerationJobRepository(uow),
             SqlAlchemyCombinationRepository(uow),
+            SqlAlchemyRuleRepository(uow),
         ),
         AddFactorValueCommand: lambda uow: AddFactorValueHandler(
             SqlAlchemyDecisionTableRepository(uow),
@@ -152,6 +170,7 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
             SqlAlchemyDecisionTableRepository(uow),
             SqlAlchemyGenerationJobRepository(uow),
             SqlAlchemyCombinationRepository(uow),
+            SqlAlchemyRuleRepository(uow),
         ),
         RequestGenerationCommand: lambda uow: RequestGenerationHandler(
             SqlAlchemyDecisionTableRepository(uow),
@@ -180,6 +199,17 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
             SqlAlchemyDecisionTableRepository(uow),
             SqlAlchemyCombinationRepository(uow),
         ),
+        CreateRuleCommand: lambda uow: CreateRuleHandler(
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyRuleRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
+        ),
+        DeleteRuleCommand: lambda uow: DeleteRuleHandler(SqlAlchemyRuleRepository(uow)),
+        ReapplyRulesCommand: lambda uow: ReapplyRulesHandler(
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyRuleRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
+        ),
     }
 
     query_registry = {
@@ -205,6 +235,10 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
         EvaluateCombinationsQuery: lambda scope: EvaluateCombinationsHandler(
             SqlAlchemyDecisionTableQueries(scope),
             SqlAlchemyCombinationQueries(scope),
+        ),
+        ListRulesQuery: lambda scope: ListRulesHandler(
+            SqlAlchemyDecisionTableQueries(scope),
+            SqlAlchemyRuleQueries(scope),
         ),
     }
 

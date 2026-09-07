@@ -33,6 +33,12 @@ class CombinationNotFoundError(NotFoundError):
         self.combination_id = combination_id
 
 
+class RuleNotFoundError(NotFoundError):
+    def __init__(self, rule_id: int) -> None:
+        super().__init__(f"Rule {rule_id} not found")
+        self.rule_id = rule_id
+
+
 class DuplicateFactorNameError(ValidationError):
     def __init__(self, name: str) -> None:
         super().__init__(f"Factor name {name!r} is already used in this table")

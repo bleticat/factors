@@ -3,7 +3,10 @@
 Decision tables generator — a QA-style combinatorial test-case tool. Define
 factors and their possible values, generate the full Cartesian product as
 candidate test cases, review/refine each row (possible/impossible + expected
-output, with bulk edits), then evaluate the table by factor→value assignment.
+output, with bulk edits) or save a wildcard **rule** (values for some factors,
+"any" for the rest, plus an output — applied to every matching row, with the
+affected-row count shown, and re-applied automatically on regeneration), then
+evaluate the table by factor→value assignment.
 
 See `specs/adr/` for the governing architecture decisions and
 `specs/features/decision_tables/` for the feature specs.

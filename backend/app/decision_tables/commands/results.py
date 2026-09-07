@@ -11,6 +11,7 @@ Callers that need the full picture follow up with a query (ADR 002's
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -56,3 +57,22 @@ class CombinationRef:
 class BulkPatchResult:
     matched_count: int
     updated_count: int
+
+
+@dataclass(frozen=True)
+class RuleRef:
+    id: int
+    matched_count: int
+    applied_at: datetime | None
+
+
+@dataclass(frozen=True)
+class RuleApplyRef:
+    rule_id: int
+    matched_count: int
+    applied_at: datetime
+
+
+@dataclass(frozen=True)
+class ReapplyRulesResult:
+    results: list[RuleApplyRef]

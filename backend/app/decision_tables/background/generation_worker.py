@@ -16,7 +16,11 @@ from app.decision_tables.commands.generate_combinations_batch import (
 from app.decision_tables.commands.mark_generation_job_failed import (
     MarkGenerationJobFailedCommand,
 )
-from app.decision_tables.domain.generation_job import TERMINAL_STATUSES
+from app.decision_tables.commands.reapply_rules import ReapplyRulesCommand
+from app.decision_tables.domain.generation_job import (
+    TERMINAL_STATUSES,
+    GenerationJobStatus,
+)
 from app.shared.mediator.mediator import Mediator
 
 logger = logging.getLogger(__name__)
@@ -43,4 +47,11 @@ async def run_generation_job(mediator: Mediator, job_id: int, batch_size: int) -
             return
 
         if result.status in _TERMINAL_STATUS_VALUES:
+            if result.status == str(GenerationJobStatus.COMPLETED):
+                # Fresh combinations have no rule-driven output yet — replay
+                # this table's rules (spec 005) now that generation is done.
+                try:
+                    await mediator.execute(ReapplyRulesCommand(table_id=result.decision_table_id))
+                except Exception:
+                    logger.exception("Rule reapply failed for table %s", result.decision_table_id)
             return

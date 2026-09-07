@@ -61,3 +61,8 @@ class EvaluateRequest(BaseModel):
     assignment: list[tuple[int, int]] = Field(default_factory=list)
     limit: int = 50
     offset: int = 0
+
+
+class CreateRuleRequest(BaseModel):
+    factor_values: list[tuple[int, int]] = Field(default_factory=list)
+    output: str

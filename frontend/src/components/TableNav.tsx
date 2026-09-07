@@ -10,6 +10,9 @@ export default function TableNav({ tableId }: { tableId: number }) {
       <NavLink to={`/tables/${tableId}/combinations`} className={linkClass}>
         Combinations
       </NavLink>
+      <NavLink to={`/tables/${tableId}/rules`} className={linkClass}>
+        Rules
+      </NavLink>
       <NavLink to={`/tables/${tableId}/evaluate`} className={linkClass}>
         Evaluate
       </NavLink>

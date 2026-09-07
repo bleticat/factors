@@ -11,6 +11,7 @@ from app.decision_tables.domain.errors import (
 from app.decision_tables.ports.combination_repository import CombinationRepository
 from app.decision_tables.ports.decision_table_repository import DecisionTableRepository
 from app.decision_tables.ports.generation_job_repository import GenerationJobRepository
+from app.decision_tables.ports.rule_repository import RuleRepository
 from app.shared.mediator.requests import Command
 
 
@@ -27,10 +28,12 @@ class DeleteFactorValueHandler:
         tables: DecisionTableRepository,
         jobs: GenerationJobRepository,
         combinations: CombinationRepository,
+        rules: RuleRepository,
     ) -> None:
         self._tables = tables
         self._jobs = jobs
         self._combinations = combinations
+        self._rules = rules
 
     async def handle(self, request: DeleteFactorValueCommand) -> None:
         table = await self._tables.get(request.table_id)
@@ -49,3 +52,6 @@ class DeleteFactorValueHandler:
         # Same rationale as delete_factor.py: invalidates every existing
         # combination's signature for this table.
         await self._combinations.delete_all_for_table(request.table_id)
+        # Same rationale as delete_factor.py: a rule's assignment may
+        # reference the deleted value (see spec 005).
+        await self._rules.delete_all_for_table(request.table_id)

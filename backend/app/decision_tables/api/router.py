@@ -23,12 +23,15 @@ from app.decision_tables.commands.cancel_generation_job import (
 from app.decision_tables.commands.create_decision_table import (
     CreateDecisionTableCommand,
 )
+from app.decision_tables.commands.create_rule import CreateRuleCommand
 from app.decision_tables.commands.delete_decision_table import (
     DeleteDecisionTableCommand,
 )
 from app.decision_tables.commands.delete_factor import DeleteFactorCommand
 from app.decision_tables.commands.delete_factor_value import DeleteFactorValueCommand
+from app.decision_tables.commands.delete_rule import DeleteRuleCommand
 from app.decision_tables.commands.patch_combination import PatchCombinationCommand
+from app.decision_tables.commands.reapply_rules import ReapplyRulesCommand
 from app.decision_tables.commands.request_generation import RequestGenerationCommand
 from app.decision_tables.commands.update_decision_table import (
     UpdateDecisionTableCommand,
@@ -41,6 +44,7 @@ from app.decision_tables.queries.get_generation_job import GetGenerationJobQuery
 from app.decision_tables.queries.list_combinations import ListCombinationsQuery
 from app.decision_tables.queries.list_decision_tables import ListDecisionTablesQuery
 from app.decision_tables.queries.list_factors import ListFactorsQuery
+from app.decision_tables.queries.list_rules import ListRulesQuery
 from app.shared.mediator.mediator import Mediator
 from app.shared.pagination import PageRequest
 
@@ -276,3 +280,33 @@ async def evaluate(
             page=PageRequest(limit=body.limit, offset=body.offset),
         )
     )
+
+
+@router.post("/{table_id}/rules", status_code=201)
+async def create_rule(
+    table_id: int, body: schemas.CreateRuleRequest, mediator: Mediator = Depends(get_mediator)
+):
+    return await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id, factor_values=tuple(body.factor_values), output=body.output
+        )
+    )
+
+
+@router.get("/{table_id}/rules")
+async def list_rules(
+    table_id: int, limit: int = 50, offset: int = 0, mediator: Mediator = Depends(get_mediator)
+):
+    return await mediator.execute(
+        ListRulesQuery(table_id=table_id, page=PageRequest(limit=limit, offset=offset))
+    )
+
+
+@router.delete("/{table_id}/rules/{rule_id}", status_code=204)
+async def delete_rule(table_id: int, rule_id: int, mediator: Mediator = Depends(get_mediator)) -> None:
+    await mediator.execute(DeleteRuleCommand(table_id=table_id, rule_id=rule_id))
+
+
+@router.post("/{table_id}/rules/reapply")
+async def reapply_rules(table_id: int, mediator: Mediator = Depends(get_mediator)):
+    return await mediator.execute(ReapplyRulesCommand(table_id=table_id))

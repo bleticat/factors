@@ -78,3 +78,34 @@ export interface BulkPatchResult {
   matched_count: number
   updated_count: number
 }
+
+export interface RuleValue {
+  factor_id: number
+  factor_value_id: number
+}
+
+export interface Rule {
+  id: number
+  decision_table_id: number
+  output: string
+  factor_values: RuleValue[]
+  matched_count: number
+  applied_at: string | null
+  created_at: string
+}
+
+export interface RuleRef {
+  id: number
+  matched_count: number
+  applied_at: string | null
+}
+
+export interface RuleApplyRef {
+  rule_id: number
+  matched_count: number
+  applied_at: string
+}
+
+export interface ReapplyRulesResult {
+  results: RuleApplyRef[]
+}
