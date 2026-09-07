@@ -1,9 +1,14 @@
 import { api } from './client'
-import type { Page, ReapplyRulesResult, Rule, RuleRef } from '../types/api'
+import type { CombinationOverlap, Page, ReapplyRulesResult, Rule, RuleRef } from '../types/api'
 
 export function listRules(tableId: number, limit = 50, offset = 0) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
   return api.get<Page<Rule>>(`/decision-tables/${tableId}/rules?${params}`)
+}
+
+export function listRuleOverlaps(tableId: number, limit = 50, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+  return api.get<Page<CombinationOverlap>>(`/decision-tables/${tableId}/rules/overlaps?${params}`)
 }
 
 export function createRule(tableId: number, factorValues: [number, number][], output: string) {

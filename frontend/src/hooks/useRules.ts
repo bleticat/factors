@@ -8,6 +8,13 @@ export function useRules(tableId: number) {
   })
 }
 
+export function useRuleOverlaps(tableId: number, limit = 50, offset = 0) {
+  return useQuery({
+    queryKey: ['rule-overlaps', tableId, limit, offset],
+    queryFn: () => api.listRuleOverlaps(tableId, limit, offset),
+  })
+}
+
 export function useCreateRule(tableId: number) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -15,6 +22,7 @@ export function useCreateRule(tableId: number) {
       api.createRule(tableId, factorValues, output),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })
       queryClient.invalidateQueries({ queryKey: ['combinations', tableId] })
     },
   })
@@ -24,7 +32,10 @@ export function useDeleteRule(tableId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ruleId: number) => api.deleteRule(tableId, ruleId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rules', tableId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })
+    },
   })
 }
 
@@ -34,6 +45,7 @@ export function useReapplyRules(tableId: number) {
     mutationFn: () => api.reapplyRules(tableId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })
       queryClient.invalidateQueries({ queryKey: ['combinations', tableId] })
     },
   })

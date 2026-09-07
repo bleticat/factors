@@ -109,3 +109,15 @@ export interface RuleApplyRef {
 export interface ReapplyRulesResult {
   results: RuleApplyRef[]
 }
+
+export interface RuleTag {
+  id: number
+  output: string
+}
+
+export interface CombinationOverlap {
+  combination: Combination
+  // Ordered by rule id ascending; the last entry is the rule that currently
+  // wins a reapply (spec 005's "later-created rule wins").
+  matching_rules: RuleTag[]
+}

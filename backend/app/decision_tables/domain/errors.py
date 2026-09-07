@@ -125,3 +125,19 @@ class DuplicateFactorInAssignmentError(ValidationError):
     def __init__(self, factor_id: int) -> None:
         super().__init__(f"Factor {factor_id} is assigned more than once in the same request")
         self.factor_id = factor_id
+
+
+class RuleTooGeneralError(ValidationError):
+    """Spec 007: a new rule may only refine (strictly narrow) an existing
+    rule's assignment, or be incomparable with it — never be equally or
+    more general, since replay order (spec 005) would let it silently
+    overwrite the more specific rule's output on every row they share."""
+
+    def __init__(self, conflicting_rule_id: int) -> None:
+        super().__init__(
+            f"This rule's assignment is as general as, or more general than, existing rule "
+            f"{conflicting_rule_id}'s; it would silently override that rule's output on every "
+            "row it also matches. Add factor values to make this rule more specific, or edit/"
+            "delete the conflicting rule first."
+        )
+        self.conflicting_rule_id = conflicting_rule_id

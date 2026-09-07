@@ -44,6 +44,7 @@ from app.decision_tables.queries.get_generation_job import GetGenerationJobQuery
 from app.decision_tables.queries.list_combinations import ListCombinationsQuery
 from app.decision_tables.queries.list_decision_tables import ListDecisionTablesQuery
 from app.decision_tables.queries.list_factors import ListFactorsQuery
+from app.decision_tables.queries.list_rule_overlaps import ListRuleOverlapsQuery
 from app.decision_tables.queries.list_rules import ListRulesQuery
 from app.shared.mediator.mediator import Mediator
 from app.shared.pagination import PageRequest
@@ -299,6 +300,15 @@ async def list_rules(
 ):
     return await mediator.execute(
         ListRulesQuery(table_id=table_id, page=PageRequest(limit=limit, offset=offset))
+    )
+
+
+@router.get("/{table_id}/rules/overlaps")
+async def list_rule_overlaps(
+    table_id: int, limit: int = 50, offset: int = 0, mediator: Mediator = Depends(get_mediator)
+):
+    return await mediator.execute(
+        ListRuleOverlapsQuery(table_id=table_id, page=PageRequest(limit=limit, offset=offset))
     )
 
 

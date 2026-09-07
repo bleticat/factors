@@ -124,6 +124,10 @@ from app.decision_tables.queries.list_factors import (
     ListFactorsHandler,
     ListFactorsQuery,
 )
+from app.decision_tables.queries.list_rule_overlaps import (
+    ListRuleOverlapsHandler,
+    ListRuleOverlapsQuery,
+)
 from app.decision_tables.queries.list_rules import ListRulesHandler, ListRulesQuery
 from app.decision_tables.queries.list_stale_running_generation_jobs import (
     ListStaleRunningGenerationJobsHandler,
@@ -239,6 +243,11 @@ def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
         ListRulesQuery: lambda scope: ListRulesHandler(
             SqlAlchemyDecisionTableQueries(scope),
             SqlAlchemyRuleQueries(scope),
+        ),
+        ListRuleOverlapsQuery: lambda scope: ListRuleOverlapsHandler(
+            SqlAlchemyDecisionTableQueries(scope),
+            SqlAlchemyRuleQueries(scope),
+            SqlAlchemyCombinationQueries(scope),
         ),
     }
 

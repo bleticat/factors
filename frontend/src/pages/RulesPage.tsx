@@ -3,8 +3,10 @@ import { useParams } from 'react-router-dom'
 import TableNav from '../components/TableNav'
 import { useCombinations } from '../hooks/useCombinations'
 import { useDecisionTable } from '../hooks/useDecisionTables'
-import { useCreateRule, useDeleteRule, useReapplyRules, useRules } from '../hooks/useRules'
+import { useCreateRule, useDeleteRule, useReapplyRules, useRuleOverlaps, useRules } from '../hooks/useRules'
 import type { Rule } from '../types/api'
+
+const OVERLAPS_PAGE_SIZE = 20
 
 export default function RulesPage() {
   const { tableId: tableIdParam } = useParams()
@@ -14,6 +16,9 @@ export default function RulesPage() {
   const createRule = useCreateRule(tableId)
   const deleteRule = useDeleteRule(tableId)
   const reapplyRules = useReapplyRules(tableId)
+
+  const [overlapsOffset, setOverlapsOffset] = useState(0)
+  const { data: overlapsPage } = useRuleOverlaps(tableId, OVERLAPS_PAGE_SIZE, overlapsOffset)
 
   const [assignment, setAssignment] = useState<Record<number, number | undefined>>({})
   const [output, setOutput] = useState('')
@@ -161,6 +166,71 @@ export default function RulesPage() {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      <div className="card">
+        <strong>Rows affected by multiple rules</strong>
+        <p className="muted">
+          These rows match two or more of the rules above. Per rule ordering, the last rule listed for each
+          row (creation order) is the one whose output currently wins.
+        </p>
+        {overlapsPage && overlapsPage.total === 0 && (
+          <p className="muted">No rows are currently matched by more than one rule.</p>
+        )}
+        {overlapsPage && overlapsPage.total > 0 && (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  {table.factors.map((f) => (
+                    <th key={f.id}>{f.name}</th>
+                  ))}
+                  <th>Matching rules (winner last)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overlapsPage.items.map((item) => (
+                  <tr key={item.combination.id}>
+                    {table.factors.map((f) => {
+                      const cv = item.combination.values.find((v) => v.factor_id === f.id)
+                      return <td key={f.id}>{cv ? valueLabel(f.id, cv.factor_value_id) : '—'}</td>
+                    })}
+                    <td>
+                      {item.matching_rules.map((r, i) => (
+                        <span key={r.id}>
+                          {i > 0 && ', '}
+                          <span style={i === item.matching_rules.length - 1 ? { fontWeight: 'bold' } : undefined}>
+                            {r.output}
+                          </span>
+                        </span>
+                      ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {overlapsPage.total > OVERLAPS_PAGE_SIZE && (
+              <div className="row" style={{ justifyContent: 'center', marginTop: '1rem' }}>
+                <button
+                  disabled={overlapsOffset === 0}
+                  onClick={() => setOverlapsOffset(Math.max(0, overlapsOffset - OVERLAPS_PAGE_SIZE))}
+                >
+                  Previous
+                </button>
+                <span className="muted">
+                  {overlapsOffset + 1}–{Math.min(overlapsOffset + OVERLAPS_PAGE_SIZE, overlapsPage.total)} of{' '}
+                  {overlapsPage.total}
+                </span>
+                <button
+                  disabled={overlapsOffset + OVERLAPS_PAGE_SIZE >= overlapsPage.total}
+                  onClick={() => setOverlapsOffset(overlapsOffset + OVERLAPS_PAGE_SIZE)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

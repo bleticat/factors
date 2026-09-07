@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from collections import defaultdict
+
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -8,8 +10,11 @@ from app.decision_tables.adapters.combination_filters import apply_combination_f
 from app.decision_tables.adapters.orm import CombinationRow
 from app.decision_tables.ports.combination_queries import (
     CombinationDTO,
+    CombinationOverlapDTO,
     CombinationQueries,
     CombinationValueDTO,
+    RuleFilterInput,
+    RuleTagDTO,
 )
 from app.decision_tables.ports.combination_repository import (
     CombinationFilter,
@@ -80,3 +85,76 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return None if row is None else _to_dto(row)
+
+    async def list_matched_by_multiple_rules(
+        self, table_id: int, rules: list[RuleFilterInput], page: PageRequest
+    ) -> Page[CombinationOverlapDTO]:
+        if len(rules) < 2:
+            return Page(items=[], total=0, limit=page.limit, offset=page.offset)
+
+        # One SELECT per rule, tagging each of its matching combination ids
+        # with the rule's id, then unioned so a combination matched by
+        # several rules appears once per matching rule.
+        per_rule_matches = [
+            apply_combination_filter(
+                select(
+                    literal(rule.rule_id).label("rule_id"),
+                    CombinationRow.id.label("combination_id"),
+                ),
+                table_id,
+                CombinationFilter(factor_values=rule.factor_values),
+            )
+            for rule in rules
+        ]
+        matches = union_all(*per_rule_matches).subquery("rule_matches")
+
+        overlap_ids = (
+            select(matches.c.combination_id)
+            .group_by(matches.c.combination_id)
+            .having(func.count(func.distinct(matches.c.rule_id)) >= 2)
+        )
+        total = (
+            await self._session.execute(select(func.count()).select_from(overlap_ids.subquery()))
+        ).scalar_one()
+
+        page_ids = [
+            row[0]
+            for row in (
+                await self._session.execute(
+                    overlap_ids.order_by(matches.c.combination_id).limit(page.limit).offset(page.offset)
+                )
+            ).all()
+        ]
+        if not page_ids:
+            return Page(items=[], total=total, limit=page.limit, offset=page.offset)
+
+        combo_rows = (
+            await self._session.execute(
+                select(CombinationRow)
+                .where(CombinationRow.id.in_(page_ids))
+                .options(selectinload(CombinationRow.values))
+            )
+        ).scalars().all()
+        combos_by_id = {row.id: _to_dto(row) for row in combo_rows}
+
+        matching_rule_ids: dict[int, list[int]] = defaultdict(list)
+        tag_rows = await self._session.execute(
+            select(matches.c.combination_id, matches.c.rule_id).where(
+                matches.c.combination_id.in_(page_ids)
+            )
+        )
+        for combination_id, rule_id in tag_rows:
+            matching_rule_ids[combination_id].append(rule_id)
+
+        output_by_rule_id = {rule.rule_id: rule.output for rule in rules}
+        items = [
+            CombinationOverlapDTO(
+                combination=combos_by_id[combination_id],
+                matching_rules=[
+                    RuleTagDTO(id=rule_id, output=output_by_rule_id[rule_id])
+                    for rule_id in sorted(set(matching_rule_ids[combination_id]))
+                ],
+            )
+            for combination_id in page_ids  # already ordered by combination id
+        ]
+        return Page(items=items, total=total, limit=page.limit, offset=page.offset)

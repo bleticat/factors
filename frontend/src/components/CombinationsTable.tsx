@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import type { Combination, CombinationStatus, DecisionTable } from '../types/api'
+import type { Combination, CombinationStatus, DecisionTable, Rule } from '../types/api'
 
 type PatchInput = { status?: CombinationStatus; output?: string | null; impossible_reason?: string | null }
 
 interface Props {
   table: DecisionTable
   combinations: Combination[]
+  rules: Rule[]
   onPatch: (combinationId: number, input: PatchInput) => void
 }
 
@@ -19,7 +20,19 @@ function buildValueLookup(table: DecisionTable): Map<string, string> {
   return map
 }
 
-export default function CombinationsTable({ table, combinations, onPatch }: Props) {
+// A rule matches a row when every (factor_id, factor_value_id) pair in its
+// assignment is present on the row — an unassigned factor is a wildcard.
+// Mirrors the backend's rule-application/overlap predicate (specs 005/006).
+// Returned in id (creation) order — the last entry is the one that
+// currently wins a reapply.
+function matchingRules(rules: Rule[], combo: Combination): Rule[] {
+  const comboPairs = new Set(combo.values.map((v) => `${v.factor_id}:${v.factor_value_id}`))
+  return rules
+    .filter((rule) => rule.factor_values.every((fv) => comboPairs.has(`${fv.factor_id}:${fv.factor_value_id}`)))
+    .sort((a, b) => a.id - b.id)
+}
+
+export default function CombinationsTable({ table, combinations, rules, onPatch }: Props) {
   const lookup = buildValueLookup(table)
 
   return (
@@ -32,11 +45,19 @@ export default function CombinationsTable({ table, combinations, onPatch }: Prop
             ))}
             <th>Status</th>
             <th>Output / reason</th>
+            <th>Rules</th>
           </tr>
         </thead>
         <tbody>
           {combinations.map((combo) => (
-            <CombinationRow key={combo.id} table={table} combo={combo} lookup={lookup} onPatch={onPatch} />
+            <CombinationRow
+              key={combo.id}
+              table={table}
+              combo={combo}
+              lookup={lookup}
+              rules={rules}
+              onPatch={onPatch}
+            />
           ))}
         </tbody>
       </table>
@@ -48,13 +69,16 @@ function CombinationRow({
   table,
   combo,
   lookup,
+  rules,
   onPatch,
 }: {
   table: DecisionTable
   combo: Combination
   lookup: Map<string, string>
+  rules: Rule[]
   onPatch: Props['onPatch']
 }) {
+  const matched = matchingRules(rules, combo)
   const [text, setText] = useState(
     combo.status === 'impossible' ? (combo.impossible_reason ?? '') : (combo.output ?? ''),
   )
@@ -93,6 +117,22 @@ function CombinationRow({
             onBlur={handleTextBlur}
             placeholder={combo.status === 'possible' ? 'expected output' : 'reason'}
           />
+        )}
+      </td>
+      <td>
+        {matched.length === 0 && <span className="muted">—</span>}
+        {matched.length > 0 && (
+          <span title={matched.length > 1 ? 'Multiple rules match this row — the last one wins.' : undefined}>
+            {matched.map((rule, i) => (
+              <span key={rule.id}>
+                {i > 0 && ', '}
+                <span style={i === matched.length - 1 && matched.length > 1 ? { fontWeight: 'bold' } : undefined}>
+                  {rule.output}
+                </span>
+              </span>
+            ))}
+            {matched.length > 1 && ' ⚠︎'}
+          </span>
         )}
       </td>
     </tr>

@@ -5,6 +5,7 @@ import CombinationsTable from '../components/CombinationsTable'
 import TableNav from '../components/TableNav'
 import { useBulkPatchCombinations, useCombinations, usePatchCombination } from '../hooks/useCombinations'
 import { useDecisionTable } from '../hooks/useDecisionTables'
+import { useRules } from '../hooks/useRules'
 import type { CombinationStatus } from '../types/api'
 
 const PAGE_SIZE = 50
@@ -23,6 +24,7 @@ export default function CombinationsPage() {
 
   const filter = { status: statusFilter, factorValues }
   const { data: page, isLoading } = useCombinations(tableId, filter, PAGE_SIZE, offset)
+  const { data: rulesPage } = useRules(tableId)
   const patchCombination = usePatchCombination(tableId)
   const bulkPatch = useBulkPatchCombinations(tableId)
 
@@ -87,6 +89,7 @@ export default function CombinationsPage() {
         <CombinationsTable
           table={table}
           combinations={page.items}
+          rules={rulesPage?.items ?? []}
           onPatch={(id, input) => patchCombination.mutate({ combinationId: id, input })}
         />
       )}

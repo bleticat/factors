@@ -30,3 +30,9 @@ class RuleQueries(ABC):
 
     @abstractmethod
     async def get(self, table_id: int, rule_id: int) -> RuleDTO | None: ...
+
+    @abstractmethod
+    async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:
+        """Unpaginated, ordered by id — the same order rules are (re)applied
+        in (spec 005). Used by `ListRuleOverlapsQuery` (spec 006), which
+        needs every rule's assignment to compute overlaps, not one page."""

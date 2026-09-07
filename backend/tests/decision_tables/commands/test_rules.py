@@ -14,6 +14,7 @@ from app.decision_tables.domain.errors import (
     DuplicateFactorInAssignmentError,
     EmptyNameError,
     RuleNotFoundError,
+    RuleTooGeneralError,
     UnknownFactorInFilterError,
     UnknownFactorValueInFilterError,
 )
@@ -198,6 +199,122 @@ async def test_create_rule_rejects_duplicate_factor_in_assignment(mediator):
         )
 
 
+async def test_create_rule_allows_refining_an_existing_rule_with_a_more_specific_one(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+    )
+    narrow = await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+            output="narrow",
+        )
+    )
+    assert narrow.matched_count == 2
+
+
+async def test_create_rule_allows_incomparable_assignments(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="browser rule")
+    )
+    os_rule = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((os_id, windows_id),), output="os rule")
+    )
+    assert os_rule.matched_count == 6
+
+
+async def test_create_rule_rejects_a_broader_rule_after_a_narrower_one(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    narrow = await mediator.execute(
+        CreateRuleCommand(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+            output="narrow",
+        )
+    )
+    with pytest.raises(RuleTooGeneralError) as exc_info:
+        await mediator.execute(
+            CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad")
+        )
+    assert exc_info.value.conflicting_rule_id == narrow.id
+
+
+async def test_create_rule_rejects_a_duplicate_assignment(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+
+    await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="first")
+    )
+    with pytest.raises(RuleTooGeneralError):
+        await mediator.execute(
+            CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="second")
+        )
+
+
+async def test_create_rule_rejects_an_empty_assignment_after_any_rule_exists(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+
+    await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="specific")
+    )
+    with pytest.raises(RuleTooGeneralError):
+        await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
+
+
+async def test_create_rule_generality_conflict_is_scoped_to_its_own_table(mediator):
+    fixture_a = await build_standard_table(mediator)
+    fixture_b = await build_standard_table(mediator)
+    browser_id, chrome_id = fixture_a["browser_id"], fixture_a["browser_values"][0]
+
+    await mediator.execute(
+        CreateRuleCommand(
+            table_id=fixture_a["table_id"], factor_values=((browser_id, chrome_id),), output="a-specific"
+        )
+    )
+    # A table-wide default on a *different* table is unaffected by fixture_a's rule.
+    default = await mediator.execute(CreateRuleCommand(table_id=fixture_b["table_id"], output="b-default"))
+    assert default.id is not None
+
+
+async def test_rejected_rule_creation_does_not_persist_or_apply_anything(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
+    await generate_and_wait(mediator, table_id)
+
+    narrow = await mediator.execute(
+        CreateRuleCommand(table_id=table_id, factor_values=((browser_id, chrome_id),), output="narrow")
+    )
+    with pytest.raises(RuleTooGeneralError):
+        await mediator.execute(CreateRuleCommand(table_id=table_id, output="default"))
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    assert page.total == 1
+    assert page.items[0].id == narrow.id
+    assert page.items[0].matched_count == 6  # unaffected by the rejected attempt
+
+
 async def test_delete_rule_for_other_table_raises_not_found(mediator):
     fixture_a = await build_standard_table(mediator)
     fixture_b = await build_standard_table(mediator)
@@ -227,11 +344,19 @@ async def test_deleting_a_factor_deletes_all_rules_for_the_table(mediator):
     table_id = fixture["table_id"]
     login_id = fixture["login_id"]
     login_in_id = fixture["login_values"][0]
+    browser_id, chrome_id = fixture["browser_id"], fixture["browser_values"][0]
     await mediator.execute(
         CreateRuleCommand(table_id=table_id, factor_values=((login_id, login_in_id),), output="x")
     )
+    # Incomparable with the rule above (constrains a different factor, not a
+    # subset or superset of it) so it doesn't trip the spec 007 "no rule may
+    # be as-general-or-more-general than an existing one" check.
     await mediator.execute(
-        CreateRuleCommand(table_id=table_id, output="unrelated-to-login-factor")
+        CreateRuleCommand(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id),),
+            output="unrelated-to-login-factor",
+        )
     )
 
     await mediator.execute(DeleteFactorCommand(table_id=table_id, factor_id=login_id))

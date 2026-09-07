@@ -43,6 +43,16 @@ class SqlAlchemyRuleQueries(RuleQueries):
         rows = (await self._session.execute(stmt)).scalars().all()
         return Page(items=[_to_dto(row) for row in rows], total=total, limit=page.limit, offset=page.offset)
 
+    async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:
+        stmt = (
+            select(RuleRow)
+            .where(RuleRow.decision_table_id == table_id)
+            .options(selectinload(RuleRow.values))
+            .order_by(RuleRow.id)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [_to_dto(row) for row in rows]
+
     async def get(self, table_id: int, rule_id: int) -> RuleDTO | None:
         stmt = (
             select(RuleRow)
