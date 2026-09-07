@@ -11,10 +11,16 @@ export function listRuleOverlaps(tableId: number, limit = 50, offset = 0) {
   return api.get<Page<CombinationOverlap>>(`/decision-tables/${tableId}/rules/overlaps?${params}`)
 }
 
-export function createRule(tableId: number, factorValues: [number, number][], output: string) {
+export function createRule(
+  tableId: number,
+  factorValues: [number, number][],
+  output: string,
+  title?: string,
+) {
   return api.post<RuleRef>(`/decision-tables/${tableId}/rules`, {
     factor_values: factorValues,
     output,
+    title: title || null,
   })
 }
 

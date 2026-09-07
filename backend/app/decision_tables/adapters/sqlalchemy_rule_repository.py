@@ -17,6 +17,7 @@ def _to_domain(row: RuleRow) -> Rule:
         id=row.id,
         decision_table_id=row.decision_table_id,
         output=row.output,
+        title=row.title,
         factor_values=[
             RuleAssignment(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
         ],
@@ -33,6 +34,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
         row = RuleRow(
             decision_table_id=rule.decision_table_id,
             output=rule.output,
+            title=rule.title,
             matched_count=rule.matched_count,
             applied_at=rule.applied_at,
         )
@@ -50,6 +52,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             id=row.id,
             decision_table_id=row.decision_table_id,
             output=row.output,
+            title=row.title,
             factor_values=list(rule.factor_values),
             matched_count=row.matched_count,
             applied_at=row.applied_at,

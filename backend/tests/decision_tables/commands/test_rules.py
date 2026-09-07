@@ -78,6 +78,36 @@ async def test_list_rules_reflects_created_rule(mediator):
     assert rule.factor_values == [RuleValueDTO(factor_id=browser_id, factor_value_id=chrome_id)]
 
 
+async def test_create_rule_reflects_a_given_title(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+
+    await mediator.execute(CreateRuleCommand(table_id=table_id, output="x", title="Default output"))
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    assert page.items[0].title == "Default output"
+
+
+async def test_create_rule_without_title_defaults_to_none(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+
+    await mediator.execute(CreateRuleCommand(table_id=table_id, output="x"))
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    assert page.items[0].title is None
+
+
+async def test_create_rule_normalizes_a_blank_title_to_none(mediator):
+    fixture = await build_standard_table(mediator)
+    table_id = fixture["table_id"]
+
+    await mediator.execute(CreateRuleCommand(table_id=table_id, output="x", title="   "))
+
+    page = await mediator.execute(ListRulesQuery(table_id=table_id, page=PageRequest(limit=100)))
+    assert page.items[0].title is None
+
+
 async def test_rules_replay_in_creation_order_on_reapply(mediator):
     fixture = await build_standard_table(mediator)
     table_id = fixture["table_id"]

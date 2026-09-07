@@ -146,6 +146,7 @@ class RuleRow(Base):
         ForeignKey("decision_tables.id", ondelete="CASCADE"), nullable=False
     )
     output: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
     matched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

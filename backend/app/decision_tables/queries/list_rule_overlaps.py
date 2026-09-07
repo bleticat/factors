@@ -43,6 +43,7 @@ class ListRuleOverlapsHandler:
             RuleFilterInput(
                 rule_id=rule.id,
                 output=rule.output,
+                title=rule.title,
                 factor_values=tuple(
                     FactorValueAssignment(factor_id=fv.factor_id, factor_value_id=fv.factor_value_id)
                     for fv in rule.factor_values

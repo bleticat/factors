@@ -22,6 +22,7 @@ class CreateRuleCommand(Command[RuleRef]):
     table_id: int
     factor_values: tuple[tuple[int, int], ...] = field(default_factory=tuple)
     output: str = ""
+    title: str | None = None
 
 
 class CreateRuleHandler:
@@ -59,10 +60,12 @@ class CreateRuleHandler:
                 assert existing.id is not None
                 raise RuleTooGeneralError(conflicting_rule_id=existing.id)
 
+        title = request.title.strip() if request.title and request.title.strip() else None
         rule = Rule(
             id=None,
             decision_table_id=request.table_id,
             output=request.output,
+            title=title,
             factor_values=new_factor_values,
         )
         rule = await self._rules.add(rule)

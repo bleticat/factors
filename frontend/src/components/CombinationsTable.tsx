@@ -127,7 +127,7 @@ function CombinationRow({
               <span key={rule.id}>
                 {i > 0 && ', '}
                 <span style={i === matched.length - 1 && matched.length > 1 ? { fontWeight: 'bold' } : undefined}>
-                  {rule.output}
+                  {rule.title ?? rule.output}
                 </span>
               </span>
             ))}

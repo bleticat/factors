@@ -13,6 +13,7 @@ Reviewing combinations one filtered batch at a time ([003](./003-review-and-bulk
 - A **rule** belongs to one `decision_table_id` and has:
   - an **assignment**: zero or more `(factor_id, factor_value_id)` pairs, each naming a distinct factor belonging to the table (same shape/validation as the bulk-patch filter in [003](./003-review-and-bulk-refine-combinations.md) and the evaluate assignment in [004](./004-evaluate-combinations.md)). Factors left unassigned act as a wildcard — "any value of this factor" — exactly like the existing filter UI's "any" option.
   - an **output**: required, non-empty free text.
+  - a **title**: optional free text, purely a human-readable label for the rule (e.g. "Safari unsupported"). It plays no role in matching/applying/ordering — it's for the user's own benefit when scanning a longer rule list. Blank/whitespace-only is normalized to "no title" (`null`), same treatment as other optional free-text fields in this app.
   - An empty assignment (`[]`) is a valid rule — it matches every combination in the table (a table-wide default output), consistent with [003](./003-review-and-bulk-refine-combinations.md)'s "empty filter means all rows" convention.
 - Creating a rule immediately applies it: every existing combination matching the assignment is set to `status=possible`, `output=<the rule's output>` — the same set-based update `BulkPatchCombinationsCommand` performs, using the rule's assignment as the filter. The number of rows matched by that apply is recorded on the rule (`matched_count`, `applied_at`) and returned to the caller so the UI can show "this rule affects N rows" right after saving.
 - Rules are re-applied automatically whenever a generation job for their table finishes successfully (i.e. after [002](./002-generate-combinations.md)'s delete-and-recreate regeneration produces a fresh set of combinations, which have no rule-driven output yet). All of a table's rules are replayed in creation order; where two rules' assignments both match the same row, the **later-created rule wins** (last write in creation order), because replay is just a sequence of the same set-based update rule creation itself performs. Each rule's `matched_count`/`applied_at` is refreshed by the replay. Rules can also be replayed on demand (without waiting for a regeneration) via the same reapply operation. [007](./007-reject-more-general-rules.md) constrains which rules can coexist in the first place: a new rule is rejected outright if it is as general as or more general than an already-existing rule, so in practice "later wins" only ever resolves in favor of a *refinement* of the rules created before it, never a silent regression to something broader.
@@ -24,10 +25,10 @@ Reviewing combinations one filtered batch at a time ([003](./003-review-and-bulk
 
 ## Commands and Queries
 
-- Command: `CreateRuleCommand(table_id, factor_values, output)` — validates the assignment (pairs belong to the table, no duplicate factor), rejects empty `output`, persists the rule, applies it immediately, and returns `RuleRef(id, matched_count, applied_at)`.
+- Command: `CreateRuleCommand(table_id, factor_values, output, title=None)` — validates the assignment (pairs belong to the table, no duplicate factor), rejects empty `output`, normalizes a blank `title` to `None`, persists the rule, applies it immediately, and returns `RuleRef(id, matched_count, applied_at)`.
 - Command: `DeleteRuleCommand(table_id, rule_id)` — deletes the rule; raises `RuleNotFoundError` if it doesn't belong to `table_id`.
 - Command: `ReapplyRulesCommand(table_id)` — replays every rule for the table, in creation order, against the table's current combinations; returns the per-rule results. Invoked automatically by the generation worker after a job reaches `completed`, and exposed for on-demand use.
-- Query: `ListRulesQuery(table_id, page)` — returns a paginated `RuleDTO` list (assignment, output, `matched_count`, `applied_at`, `created_at`), ordered by id.
+- Query: `ListRulesQuery(table_id, page)` — returns a paginated `RuleDTO` list (assignment, output, `title`, `matched_count`, `applied_at`, `created_at`), ordered by id.
 
 ## Test Cases
 
@@ -35,6 +36,7 @@ Reviewing combinations one filtered batch at a time ([003](./003-review-and-bulk
   - Creating a rule with a single-factor assignment on the 18-combination standard table (3×3×2) immediately sets `status=possible`/`output` on exactly the matching subset and returns that count as `matched_count`.
   - Creating a rule with an empty assignment (`[]`) matches and updates all 18 rows.
   - `ListRulesQuery` reflects a created rule's assignment, output, and `matched_count`.
+  - Creating a rule with a `title` reflects it verbatim in `ListRulesQuery`; omitting `title` (or sending blank/whitespace) leaves it `null`.
   - After regenerating a table (new factor value added, then `RequestGenerationCommand` re-run to completion), previously-created rules are automatically re-applied to the fresh combination set, including rows covering the new factor value.
   - Two overlapping rules (a broad one, then a narrower one created after it) replay in creation order so the narrower rule's output wins on the rows both match.
   - `ReapplyRulesCommand` can be invoked on demand and returns updated `matched_count` per rule without requiring a new generation.

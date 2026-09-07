@@ -36,6 +36,7 @@ class RuleFilterInput:
 
     rule_id: int
     output: str
+    title: str | None
     factor_values: tuple[FactorValueAssignment, ...]
 
 
@@ -43,6 +44,7 @@ class RuleFilterInput:
 class RuleTagDTO:
     id: int
     output: str
+    title: str | None
 
 
 @dataclass(frozen=True)

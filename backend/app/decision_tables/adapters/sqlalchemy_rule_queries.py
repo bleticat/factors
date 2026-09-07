@@ -15,6 +15,7 @@ def _to_dto(row: RuleRow) -> RuleDTO:
         id=row.id,
         decision_table_id=row.decision_table_id,
         output=row.output,
+        title=row.title,
         factor_values=[
             RuleValueDTO(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
         ],

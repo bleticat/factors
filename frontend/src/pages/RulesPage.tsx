@@ -22,6 +22,7 @@ export default function RulesPage() {
 
   const [assignment, setAssignment] = useState<Record<number, number | undefined>>({})
   const [output, setOutput] = useState('')
+  const [title, setTitle] = useState('')
 
   const factorValues: [number, number][] = Object.entries(assignment)
     .filter((entry): entry is [string, number] => entry[1] !== undefined)
@@ -49,6 +50,12 @@ export default function RulesPage() {
       .join(', ')
   }
 
+  // The title is purely a human-readable label (spec 005); fall back to the
+  // output wherever a short label for a rule is needed but no title was set.
+  function ruleLabel(rule: { title: string | null; output: string }): string {
+    return rule.title ?? rule.output
+  }
+
   function formatTimestamp(value: string): string {
     // Naive UTC timestamps from the backend; append 'Z' so Date parses them
     // as UTC instead of local time.
@@ -58,8 +65,8 @@ export default function RulesPage() {
   function handleSave() {
     if (!output.trim()) return
     createRule.mutate(
-      { factorValues, output },
-      { onSuccess: () => { setAssignment({}); setOutput('') } },
+      { factorValues, output, title: title.trim() || undefined },
+      { onSuccess: () => { setAssignment({}); setOutput(''); setTitle('') } },
     )
   }
 
@@ -106,6 +113,13 @@ export default function RulesPage() {
         <div className="row-wrap">
           <input
             type="text"
+            placeholder="Title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            style={{ flex: 1, minWidth: '12rem' }}
+          />
+          <input
+            type="text"
             placeholder="Output"
             value={output}
             onChange={(e) => setOutput(e.target.value)}
@@ -137,6 +151,7 @@ export default function RulesPage() {
           <table>
             <thead>
               <tr>
+                <th>Title</th>
                 <th>When</th>
                 <th>Output</th>
                 <th>Rows affected</th>
@@ -147,6 +162,7 @@ export default function RulesPage() {
             <tbody>
               {rulesPage.items.map((rule) => (
                 <tr key={rule.id}>
+                  <td>{rule.title ?? <span className="muted">—</span>}</td>
                   <td>{describeRule(rule)}</td>
                   <td>{rule.output}</td>
                   <td>{rule.matched_count}</td>
@@ -201,7 +217,7 @@ export default function RulesPage() {
                         <span key={r.id}>
                           {i > 0 && ', '}
                           <span style={i === item.matching_rules.length - 1 ? { fontWeight: 'bold' } : undefined}>
-                            {r.output}
+                            {ruleLabel(r)}
                           </span>
                         </span>
                       ))}

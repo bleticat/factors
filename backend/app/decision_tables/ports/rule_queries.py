@@ -18,6 +18,7 @@ class RuleDTO:
     id: int
     decision_table_id: int
     output: str
+    title: str | None = None
     factor_values: list[RuleValueDTO] = field(default_factory=list)
     matched_count: int = 0
     applied_at: datetime | None = None

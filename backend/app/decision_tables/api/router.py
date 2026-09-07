@@ -289,7 +289,10 @@ async def create_rule(
 ):
     return await mediator.execute(
         CreateRuleCommand(
-            table_id=table_id, factor_values=tuple(body.factor_values), output=body.output
+            table_id=table_id,
+            factor_values=tuple(body.factor_values),
+            output=body.output,
+            title=body.title,
         )
     )
 

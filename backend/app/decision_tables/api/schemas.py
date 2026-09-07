@@ -66,3 +66,4 @@ class EvaluateRequest(BaseModel):
 class CreateRuleRequest(BaseModel):
     factor_values: list[tuple[int, int]] = Field(default_factory=list)
     output: str
+    title: str | None = None

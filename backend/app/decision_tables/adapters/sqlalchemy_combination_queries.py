@@ -146,12 +146,16 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
         for combination_id, rule_id in tag_rows:
             matching_rule_ids[combination_id].append(rule_id)
 
-        output_by_rule_id = {rule.rule_id: rule.output for rule in rules}
+        rules_by_id = {rule.rule_id: rule for rule in rules}
         items = [
             CombinationOverlapDTO(
                 combination=combos_by_id[combination_id],
                 matching_rules=[
-                    RuleTagDTO(id=rule_id, output=output_by_rule_id[rule_id])
+                    RuleTagDTO(
+                        id=rule_id,
+                        output=rules_by_id[rule_id].output,
+                        title=rules_by_id[rule_id].title,
+                    )
                     for rule_id in sorted(set(matching_rule_ids[combination_id]))
                 ],
             )

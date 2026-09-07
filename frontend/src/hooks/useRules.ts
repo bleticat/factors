@@ -18,8 +18,15 @@ export function useRuleOverlaps(tableId: number, limit = 50, offset = 0) {
 export function useCreateRule(tableId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ factorValues, output }: { factorValues: [number, number][]; output: string }) =>
-      api.createRule(tableId, factorValues, output),
+    mutationFn: ({
+      factorValues,
+      output,
+      title,
+    }: {
+      factorValues: [number, number][]
+      output: string
+      title?: string
+    }) => api.createRule(tableId, factorValues, output, title),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules', tableId] })
       queryClient.invalidateQueries({ queryKey: ['rule-overlaps', tableId] })

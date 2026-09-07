@@ -88,6 +88,7 @@ export interface Rule {
   id: number
   decision_table_id: number
   output: string
+  title: string | null
   factor_values: RuleValue[]
   matched_count: number
   applied_at: string | null
@@ -113,6 +114,7 @@ export interface ReapplyRulesResult {
 export interface RuleTag {
   id: number
   output: string
+  title: string | null
 }
 
 export interface CombinationOverlap {
