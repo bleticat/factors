@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      # Named volume for .venv, layered on top of the bind mount above, so
+      # the container's own Linux-built venv is used instead of whatever
+      # (host-platform, possibly absent) .venv lives in ./backend on disk.
+      - backend-venv:/app/.venv
+    command: sh -c "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # Same reasoning as backend-venv, for node_modules.
+      - frontend-node-modules:/app/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://backend:8000
+    depends_on:
+      - backend
+
+volumes:
+  backend-venv:
+  frontend-node-modules:

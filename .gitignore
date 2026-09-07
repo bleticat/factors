@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local SQLite dev databases (app default: backend/factors.db)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
