@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.decision_tables.adapters.orm import DecisionTableRow, FactorRow, FactorValueRow
 from app.decision_tables.domain.decision_table import DecisionTable, Factor, FactorValue
 from app.decision_tables.ports.decision_table_repository import DecisionTableRepository
+from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 
 
 def _to_domain(row: DecisionTableRow) -> DecisionTable:
@@ -30,8 +31,8 @@ def _to_domain(row: DecisionTableRow) -> DecisionTable:
 
 
 class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._session: AsyncSession = uow.session
 
     async def add(self, table: DecisionTable) -> DecisionTable:
         row = DecisionTableRow(name=table.name, description=table.description)

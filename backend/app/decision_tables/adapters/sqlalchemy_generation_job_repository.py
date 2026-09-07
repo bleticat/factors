@@ -10,6 +10,7 @@ from app.decision_tables.domain.generation_job import (
     GenerationJobStatus,
 )
 from app.decision_tables.ports.generation_job_repository import GenerationJobRepository
+from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 
 
 def _to_domain(row: GenerationJobRow) -> GenerationJob:
@@ -27,8 +28,8 @@ def _to_domain(row: GenerationJobRow) -> GenerationJob:
 
 
 class SqlAlchemyGenerationJobRepository(GenerationJobRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._session: AsyncSession = uow.session
 
     async def add(self, job: GenerationJob) -> GenerationJob:
         row = GenerationJobRow(

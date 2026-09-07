@@ -9,11 +9,12 @@ from app.decision_tables.ports.generation_job_queries import (
     GenerationJobDTO,
     GenerationJobQueries,
 )
+from app.shared.database.sqlalchemy_database import SqlAlchemyReadScope
 
 
 class SqlAlchemyGenerationJobQueries(GenerationJobQueries):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, scope: SqlAlchemyReadScope) -> None:
+        self._session: AsyncSession = scope.session
 
     async def list_stale_running(self) -> list[int]:
         stmt = select(GenerationJobRow.id).where(

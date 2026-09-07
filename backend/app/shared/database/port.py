@@ -15,6 +15,18 @@ mediator. It hands out two kinds of execution scope:
 This port must not expose bounded-context command/query request types,
 handlers, or handler factories (ADR 007 guardrail) — it only knows how to
 open sessions/scopes.
+
+`UnitOfWork` and `ReadScope` are deliberately opaque marker types here: a
+"session" is a SQLAlchemy concept, and this module must stay technology-
+agnostic (ADR 004's "concrete database code lives in adapters" — that
+includes the database *driver*, not just the SQL dialect). The concrete
+adapter (`sqlalchemy_database.py`) attaches a public `session` to its own
+`SqlAlchemyUnitOfWork`/`SqlAlchemyReadScope` classes; context-specific
+repository/query adapters (e.g. `decision_tables/adapters/`) depend on
+those concrete classes directly to reach it — a concrete-to-concrete
+dependency between two adapter modules, not a leak through this port,
+since the composition root passes the concrete scope straight through
+without ever needing to know it has a `.session`.
 """
 
 from __future__ import annotations
@@ -22,15 +34,13 @@ from __future__ import annotations
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 
 class UnitOfWork(Protocol):
-    session: AsyncSession
+    """Opaque handle for one command's transactional scope."""
 
 
 class ReadScope(Protocol):
-    session: AsyncSession
+    """Opaque handle for one query's read-only scope."""
 
 
 class Database(Protocol):

@@ -15,6 +15,7 @@ from app.decision_tables.ports.combination_repository import (
     CombinationFilter,
     FactorValueAssignment,
 )
+from app.shared.database.sqlalchemy_database import SqlAlchemyReadScope
 from app.shared.pagination import Page, PageRequest
 
 
@@ -33,8 +34,8 @@ def _to_dto(row: CombinationRow) -> CombinationDTO:
 
 
 class SqlAlchemyCombinationQueries(CombinationQueries):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, scope: SqlAlchemyReadScope) -> None:
+        self._session: AsyncSession = scope.session
 
     async def list_(
         self, table_id: int, filter_: CombinationFilter, page: PageRequest

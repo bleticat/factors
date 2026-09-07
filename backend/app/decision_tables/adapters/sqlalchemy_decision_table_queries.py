@@ -12,12 +12,13 @@ from app.decision_tables.ports.decision_table_queries import (
     FactorDTO,
     FactorValueDTO,
 )
+from app.shared.database.sqlalchemy_database import SqlAlchemyReadScope
 from app.shared.pagination import Page, PageRequest
 
 
 class SqlAlchemyDecisionTableQueries(DecisionTableQueries):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, scope: SqlAlchemyReadScope) -> None:
+        self._session: AsyncSession = scope.session
 
     async def get(self, table_id: int) -> DecisionTableDTO | None:
         stmt = (

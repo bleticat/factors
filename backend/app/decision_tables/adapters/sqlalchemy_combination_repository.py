@@ -12,6 +12,7 @@ from app.decision_tables.ports.combination_repository import (
     CombinationPatch,
     CombinationRepository,
 )
+from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 
 
 def _to_domain(row: CombinationRow) -> Combination:
@@ -31,8 +32,8 @@ def _to_domain(row: CombinationRow) -> Combination:
 
 
 class SqlAlchemyCombinationRepository(CombinationRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._session: AsyncSession = uow.session
 
     async def bulk_insert(self, combinations: list[Combination]) -> None:
         if not combinations:

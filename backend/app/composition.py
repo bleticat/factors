@@ -119,92 +119,92 @@ from app.shared.mediator.mediator import Mediator
 def build_mediator(database: Database, *, max_combinations: int) -> Mediator:
     command_registry = {
         CreateDecisionTableCommand: lambda uow: CreateDecisionTableHandler(
-            SqlAlchemyDecisionTableRepository(uow.session)
+            SqlAlchemyDecisionTableRepository(uow)
         ),
         UpdateDecisionTableCommand: lambda uow: UpdateDecisionTableHandler(
-            SqlAlchemyDecisionTableRepository(uow.session)
+            SqlAlchemyDecisionTableRepository(uow)
         ),
         DeleteDecisionTableCommand: lambda uow: DeleteDecisionTableHandler(
-            SqlAlchemyDecisionTableRepository(uow.session)
+            SqlAlchemyDecisionTableRepository(uow)
         ),
         AddFactorCommand: lambda uow: AddFactorHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
         ),
         UpdateFactorCommand: lambda uow: UpdateFactorHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
         ),
         DeleteFactorCommand: lambda uow: DeleteFactorHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
-            SqlAlchemyCombinationRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
         ),
         AddFactorValueCommand: lambda uow: AddFactorValueHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
         ),
         UpdateFactorValueCommand: lambda uow: UpdateFactorValueHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
         ),
         DeleteFactorValueCommand: lambda uow: DeleteFactorValueHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
-            SqlAlchemyCombinationRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
         ),
         RequestGenerationCommand: lambda uow: RequestGenerationHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyGenerationJobRepository(uow.session),
-            SqlAlchemyCombinationRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyGenerationJobRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
             max_combinations,
         ),
         GenerateCombinationsBatchCommand: lambda uow: GenerateCombinationsBatchHandler(
-            SqlAlchemyGenerationJobRepository(uow.session),
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyCombinationRepository(uow.session),
+            SqlAlchemyGenerationJobRepository(uow),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
         ),
         MarkGenerationJobFailedCommand: lambda uow: MarkGenerationJobFailedHandler(
-            SqlAlchemyGenerationJobRepository(uow.session)
+            SqlAlchemyGenerationJobRepository(uow)
         ),
         MarkStaleGenerationJobsFailedCommand: lambda uow: MarkStaleGenerationJobsFailedHandler(
-            SqlAlchemyGenerationJobRepository(uow.session)
+            SqlAlchemyGenerationJobRepository(uow)
         ),
         CancelGenerationJobCommand: lambda uow: CancelGenerationJobHandler(
-            SqlAlchemyGenerationJobRepository(uow.session)
+            SqlAlchemyGenerationJobRepository(uow)
         ),
         PatchCombinationCommand: lambda uow: PatchCombinationHandler(
-            SqlAlchemyCombinationRepository(uow.session)
+            SqlAlchemyCombinationRepository(uow)
         ),
         BulkPatchCombinationsCommand: lambda uow: BulkPatchCombinationsHandler(
-            SqlAlchemyDecisionTableRepository(uow.session),
-            SqlAlchemyCombinationRepository(uow.session),
+            SqlAlchemyDecisionTableRepository(uow),
+            SqlAlchemyCombinationRepository(uow),
         ),
     }
 
     query_registry = {
         GetDecisionTableQuery: lambda scope: GetDecisionTableHandler(
-            SqlAlchemyDecisionTableQueries(scope.session)
+            SqlAlchemyDecisionTableQueries(scope)
         ),
         ListDecisionTablesQuery: lambda scope: ListDecisionTablesHandler(
-            SqlAlchemyDecisionTableQueries(scope.session)
+            SqlAlchemyDecisionTableQueries(scope)
         ),
         ListFactorsQuery: lambda scope: ListFactorsHandler(
-            SqlAlchemyDecisionTableQueries(scope.session)
+            SqlAlchemyDecisionTableQueries(scope)
         ),
         GetGenerationJobQuery: lambda scope: GetGenerationJobHandler(
-            SqlAlchemyGenerationJobQueries(scope.session)
+            SqlAlchemyGenerationJobQueries(scope)
         ),
         ListStaleRunningGenerationJobsQuery: lambda scope: ListStaleRunningGenerationJobsHandler(
-            SqlAlchemyGenerationJobQueries(scope.session)
+            SqlAlchemyGenerationJobQueries(scope)
         ),
         ListCombinationsQuery: lambda scope: ListCombinationsHandler(
-            SqlAlchemyDecisionTableQueries(scope.session),
-            SqlAlchemyCombinationQueries(scope.session),
+            SqlAlchemyDecisionTableQueries(scope),
+            SqlAlchemyCombinationQueries(scope),
         ),
         EvaluateCombinationsQuery: lambda scope: EvaluateCombinationsHandler(
-            SqlAlchemyDecisionTableQueries(scope.session),
-            SqlAlchemyCombinationQueries(scope.session),
+            SqlAlchemyDecisionTableQueries(scope),
+            SqlAlchemyCombinationQueries(scope),
         ),
     }
 
