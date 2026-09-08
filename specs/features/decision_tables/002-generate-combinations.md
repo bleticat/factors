@@ -54,5 +54,5 @@ Once a decision table has factors and values ([001](./001-manage-decision-tables
 
 ## Open Questions
 
-- **Considered and rejected** batching designs (kept here for record, per the plan's mediator-design rationale): (a) a handler issuing multiple `session.commit()` calls inside one command dispatch — breaks the unit-of-work's ownership of commit/rollback (ADR 004); (b) a handler calling the mediator to dispatch its own sub-batches — directly forbidden by the ADR 007 guardrail against handlers calling the mediator; (c) doing all batches inside one single transaction — no incremental progress visibility and risks long SQLite write-lock hold on large tables. The chosen design (external loop, one command per batch) avoids all three.
+- **Considered and rejected** batching designs (kept here for record): (a) a command service issuing multiple `session.commit()` calls inside one call — breaks the unit-of-work's ownership of commit/rollback (ADR 004); (b) a command service method recursively dispatching its own sub-batches — blurs the line between a use case and the boundary driving it; (c) doing all batches inside one single transaction — no incremental progress visibility and risks long SQLite write-lock hold on large tables. The chosen design (external loop in `generation/worker.py`, one call per batch) avoids all three.
 - None outstanding.

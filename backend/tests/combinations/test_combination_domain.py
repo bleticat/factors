@@ -1,4 +1,4 @@
-"""Pure domain-logic tests — no mediator/database involved. Covers spec
+"""Pure domain-logic tests — no database involved. Covers spec
 002's regression case: mixed-radix cursor decomposition must match
 `itertools.product` order exactly."""
 
@@ -28,14 +28,20 @@ def test_total_combinations_zero_if_no_factors():
 def test_decompose_index_matches_itertools_product_order():
     value_counts = [3, 3, 2]
     expected = list(itertools.product(range(3), range(3), range(2)))
-    actual = [tuple(decompose_index(i, value_counts)) for i in range(total_combinations(value_counts))]
+    actual = [
+        tuple(decompose_index(i, value_counts))
+        for i in range(total_combinations(value_counts))
+    ]
     assert actual == expected
 
 
 def test_decompose_index_matches_itertools_product_for_uneven_counts():
     value_counts = [2, 5, 3, 1]
     expected = list(itertools.product(*(range(n) for n in value_counts)))
-    actual = [tuple(decompose_index(i, value_counts)) for i in range(total_combinations(value_counts))]
+    actual = [
+        tuple(decompose_index(i, value_counts))
+        for i in range(total_combinations(value_counts))
+    ]
     assert actual == expected
 
 

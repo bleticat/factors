@@ -10,7 +10,9 @@ from app.tables.errors import (
 from app.tables.ports.decision_table_queries import DecisionTableDTO
 
 
-def validate_factor_value_pairs(table: DecisionTableDTO, pairs: list[tuple[int, int]]) -> None:
+def validate_factor_value_pairs(
+    table: DecisionTableDTO, pairs: list[tuple[int, int]]
+) -> None:
     """Validates against the `DecisionTableDTO` read shape rather than the
     `DecisionTable` domain aggregate (that variant, `DecisionTable.
     validate_factor_value_pairs`, is used by command handlers, which do have

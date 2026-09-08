@@ -35,13 +35,17 @@ class DuplicateFactorValueError(ValidationError):
 
 class UnknownFactorInFilterError(ValidationError):
     def __init__(self, factor_id: int, table_id: int) -> None:
-        super().__init__(f"Factor {factor_id} does not belong to decision table {table_id}")
+        super().__init__(
+            f"Factor {factor_id} does not belong to decision table {table_id}"
+        )
         self.factor_id = factor_id
         self.table_id = table_id
 
 
 class UnknownFactorValueInFilterError(ValidationError):
     def __init__(self, factor_value_id: int, factor_id: int) -> None:
-        super().__init__(f"Factor value {factor_value_id} does not belong to factor {factor_id}")
+        super().__init__(
+            f"Factor value {factor_value_id} does not belong to factor {factor_id}"
+        )
         self.factor_value_id = factor_value_id
         self.factor_id = factor_id

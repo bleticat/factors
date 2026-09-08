@@ -33,7 +33,9 @@ class RuleDTO:
 
 class RuleQueries(ABC):
     @abstractmethod
-    async def list_for_table(self, table_id: int, page: PageRequest) -> Page[RuleDTO]: ...
+    async def list_for_table(
+        self, table_id: int, page: PageRequest
+    ) -> Page[RuleDTO]: ...
 
     @abstractmethod
     async def get(self, table_id: int, rule_id: int) -> RuleDTO | None: ...

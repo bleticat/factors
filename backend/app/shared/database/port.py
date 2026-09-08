@@ -1,20 +1,20 @@
 """The database port (ADR 004).
 
-`Database` is the only thing the composition root needs to build the
-mediator. It hands out two kinds of execution scope:
+`Database` is the only thing boundaries (API routes via `app/shared/api.py`,
+the background worker, the startup sweep, tests) need to get a scope to run
+a module's `Commands`/`Queries` service in. It hands out two kinds:
 
-- `unit_of_work()`: for commands. Backed by a transaction; commits on normal
-  exit, rolls back on exception. Command handler factories build write-side
-  repositories from the `UnitOfWork`'s session.
-- `read_scope()`: for queries. Never opens a write transaction and never
-  commits — even if a query handler mistakenly executes a write through it,
-  nothing persists, because the scope always rolls back on exit. This is the
+- `unit_of_work()`: for writes. Backed by a transaction; commits on normal
+  exit, rolls back on exception. `app.composition`'s `build_*_commands`
+  factories build write-side repositories from the `UnitOfWork`'s session.
+- `read_scope()`: for reads. Never opens a write transaction and never
+  commits — even if a query mistakenly executes a write through it, nothing
+  persists, because the scope always rolls back on exit. This is the
   structural enforcement of "queries can't write" called for in the plan,
   independent of any type-checking discipline.
 
-This port must not expose bounded-context command/query request types,
-handlers, or handler factories (ADR 007 guardrail) — it only knows how to
-open sessions/scopes.
+This port must not expose module-specific command/query types or service
+classes — it only knows how to open sessions/scopes.
 
 `UnitOfWork` and `ReadScope` are deliberately opaque marker types here: a
 "session" is a SQLAlchemy concept, and this module must stay technology-

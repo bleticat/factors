@@ -9,13 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.combinations.api.routes import router as combinations_router
-from app.composition import build_mediator
 from app.config import settings
 from app.generation.api.routes import router as generation_router
 from app.generation.startup_sweep import sweep_stale_generation_jobs
 from app.rules.api.routes import router as rules_router
 from app.shared.database.sqlalchemy_database import SqlAlchemyDatabase, create_engine
-from app.shared.errors import NotFoundError, UnregisteredRequestError, ValidationError
+from app.shared.errors import NotFoundError, ValidationError
 from app.tables.api.routes import router as tables_router
 
 logger = logging.getLogger(__name__)
@@ -25,12 +24,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = create_engine(settings.database_url)
     database = SqlAlchemyDatabase(engine)
-    mediator = build_mediator(database, max_combinations=settings.max_combinations)
-    app.state.mediator = mediator
+    app.state.database = database
 
-    swept = await sweep_stale_generation_jobs(mediator)
+    swept = await sweep_stale_generation_jobs(database)
     if swept:
-        logger.warning("Swept %d stale 'running' generation job(s) to 'failed' on startup", swept)
+        logger.warning(
+            "Swept %d stale 'running' generation job(s) to 'failed' on startup", swept
+        )
 
     yield
 
@@ -52,20 +52,19 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
 
     @app.exception_handler(ValidationError)
-    async def handle_validation(_request: Request, exc: ValidationError) -> JSONResponse:
+    async def handle_validation(
+        _request: Request, exc: ValidationError
+    ) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @app.exception_handler(UnregisteredRequestError)
-    async def handle_unregistered(_request: Request, exc: UnregisteredRequestError) -> JSONResponse:
-        logger.error("Unregistered mediator request: %s", exc)
-        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     # `tables`, `rules`, `combinations`, and `generation` each contribute a
     # disjoint set of paths under the same `/api/decision-tables` prefix —
     # they're sub-modules of the one bounded context this service has, not
     # separate API surfaces.
     for router in (tables_router, rules_router, combinations_router, generation_router):
-        app.include_router(router, prefix="/api/decision-tables", tags=["decision-tables"])
+        app.include_router(
+            router, prefix="/api/decision-tables", tags=["decision-tables"]
+        )
 
     return app
 
