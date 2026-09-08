@@ -20,7 +20,8 @@ def _to_domain(row: RuleRow) -> Rule:
         title=row.title,
         order_index=row.order_index,
         factor_values=[
-            RuleAssignment(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
+            RuleAssignment(factor_id=v.factor_id, factor_value_id=v.factor_value_id)
+            for v in row.values
         ],
         matched_count=row.matched_count,
         applied_at=row.applied_at,
@@ -44,7 +45,9 @@ class SqlAlchemyRuleRepository(RuleRepository):
         await self._session.flush()
 
         value_rows = [
-            RuleValueRow(rule_id=row.id, factor_id=a.factor_id, factor_value_id=a.factor_value_id)
+            RuleValueRow(
+                rule_id=row.id, factor_id=a.factor_id, factor_value_id=a.factor_value_id
+            )
             for a in rule.factor_values
         ]
         self._session.add_all(value_rows)
@@ -69,10 +72,16 @@ class SqlAlchemyRuleRepository(RuleRepository):
         row.title = rule.title
         row.order_index = rule.order_index
 
-        await self._session.execute(delete(RuleValueRow).where(RuleValueRow.rule_id == rule.id))
+        await self._session.execute(
+            delete(RuleValueRow).where(RuleValueRow.rule_id == rule.id)
+        )
         self._session.add_all(
             [
-                RuleValueRow(rule_id=rule.id, factor_id=a.factor_id, factor_value_id=a.factor_value_id)
+                RuleValueRow(
+                    rule_id=rule.id,
+                    factor_id=a.factor_id,
+                    factor_value_id=a.factor_value_id,
+                )
                 for a in rule.factor_values
             ]
         )
@@ -98,7 +107,9 @@ class SqlAlchemyRuleRepository(RuleRepository):
         return [_to_domain(row) for row in rows]
 
     async def delete(self, table_id: int, rule_id: int) -> bool:
-        stmt = delete(RuleRow).where(RuleRow.id == rule_id, RuleRow.decision_table_id == table_id)
+        stmt = delete(RuleRow).where(
+            RuleRow.id == rule_id, RuleRow.decision_table_id == table_id
+        )
         result = await self._session.execute(stmt)
         await self._session.flush()
         return bool(result.rowcount)
@@ -108,7 +119,9 @@ class SqlAlchemyRuleRepository(RuleRepository):
         await self._session.execute(stmt)
         await self._session.flush()
 
-    async def record_apply(self, rule_id: int, matched_count: int, applied_at: datetime) -> None:
+    async def record_apply(
+        self, rule_id: int, matched_count: int, applied_at: datetime
+    ) -> None:
         row = await self._session.get(RuleRow, rule_id)
         assert row is not None
         row.matched_count = matched_count

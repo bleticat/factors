@@ -8,7 +8,7 @@ Status: Active
 
 The core should grow by product capability, not by technical layer. Specs need a clear home for behavior, boundaries, and abstractions.
 
-Use case execution now goes through a mediator, but bounded contexts still own their domain vocabulary and behavior.
+Each bounded context exposes its use cases as command/query service methods, but bounded contexts still own their domain vocabulary and behavior.
 
 ## Decision
 
@@ -25,7 +25,7 @@ Each bounded context gets its own folder. It owns its domain vocabulary and usua
 
 The internal file split can vary by size. Ownership matters more than identical folders: context-specific behavior and contracts stay in the context.
 
-Use `shared/` only for cross-context contracts and utilities, such as database abstractions, transaction primitives, generic mediator abstractions, generic repositories, shared errors, and query helpers.
+Use `shared/` only for cross-context contracts and utilities, such as database abstractions, transaction primitives, generic execution helpers, generic repositories, shared errors, and query helpers.
 
 `shared/` must not hold domain behavior that belongs to one context.
 

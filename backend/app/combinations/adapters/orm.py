@@ -15,7 +15,9 @@ from app.shared.database.orm_base import Base
 class CombinationRow(Base):
     __tablename__ = "combinations"
     __table_args__ = (
-        UniqueConstraint("decision_table_id", "signature", name="uq_combination_signature"),
+        UniqueConstraint(
+            "decision_table_id", "signature", name="uq_combination_signature"
+        ),
         Index("ix_combinations_table_status", "decision_table_id", "status"),
     )
 
@@ -43,7 +45,9 @@ class CombinationRow(Base):
 class CombinationValueRow(Base):
     __tablename__ = "combination_values"
     __table_args__ = (
-        UniqueConstraint("combination_id", "factor_id", name="uq_combination_value_factor"),
+        UniqueConstraint(
+            "combination_id", "factor_id", name="uq_combination_value_factor"
+        ),
         Index("ix_combination_values_factor_value", "factor_id", "factor_value_id"),
         Index("ix_combination_values_combination", "combination_id"),
     )
@@ -52,7 +56,9 @@ class CombinationValueRow(Base):
     combination_id: Mapped[int] = mapped_column(
         ForeignKey("combinations.id", ondelete="CASCADE"), nullable=False
     )
-    factor_id: Mapped[int] = mapped_column(ForeignKey("factors.id", ondelete="CASCADE"), nullable=False)
+    factor_id: Mapped[int] = mapped_column(
+        ForeignKey("factors.id", ondelete="CASCADE"), nullable=False
+    )
     factor_value_id: Mapped[int] = mapped_column(
         ForeignKey("factor_values.id", ondelete="CASCADE"), nullable=False
     )

@@ -32,7 +32,9 @@ def _to_dto(row: CombinationRow) -> CombinationDTO:
         output=row.output,
         impossible_reason=row.impossible_reason,
         values=[
-            CombinationValueDTO(factor_id=v.factor_id, factor_value_id=v.factor_value_id)
+            CombinationValueDTO(
+                factor_id=v.factor_id, factor_value_id=v.factor_value_id
+            )
             for v in row.values
         ],
     )
@@ -59,13 +61,19 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return Page(
-            items=[_to_dto(row) for row in rows], total=total, limit=page.limit, offset=page.offset
+            items=[_to_dto(row) for row in rows],
+            total=total,
+            limit=page.limit,
+            offset=page.offset,
         )
 
     async def get(self, table_id: int, combination_id: int) -> CombinationDTO | None:
         stmt = (
             select(CombinationRow)
-            .where(CombinationRow.id == combination_id, CombinationRow.decision_table_id == table_id)
+            .where(
+                CombinationRow.id == combination_id,
+                CombinationRow.decision_table_id == table_id,
+            )
             .options(selectinload(CombinationRow.values))
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
@@ -76,13 +84,15 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
     ) -> CombinationDTO | None:
         filter_ = CombinationFilter(
             factor_values=tuple(
-                FactorValueAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
+                FactorValueAssignment(
+                    factor_id=factor_id, factor_value_id=factor_value_id
+                )
                 for factor_id, factor_value_id in assignment
             )
         )
-        stmt = apply_combination_filter(select(CombinationRow), table_id, filter_).options(
-            selectinload(CombinationRow.values)
-        )
+        stmt = apply_combination_filter(
+            select(CombinationRow), table_id, filter_
+        ).options(selectinload(CombinationRow.values))
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         return None if row is None else _to_dto(row)
 
@@ -114,14 +124,18 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
             .having(func.count(func.distinct(matches.c.rule_id)) >= 2)
         )
         total = (
-            await self._session.execute(select(func.count()).select_from(overlap_ids.subquery()))
+            await self._session.execute(
+                select(func.count()).select_from(overlap_ids.subquery())
+            )
         ).scalar_one()
 
         page_ids = [
             row[0]
             for row in (
                 await self._session.execute(
-                    overlap_ids.order_by(matches.c.combination_id).limit(page.limit).offset(page.offset)
+                    overlap_ids.order_by(matches.c.combination_id)
+                    .limit(page.limit)
+                    .offset(page.offset)
                 )
             ).all()
         ]
@@ -129,12 +143,16 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
             return Page(items=[], total=total, limit=page.limit, offset=page.offset)
 
         combo_rows = (
-            await self._session.execute(
-                select(CombinationRow)
-                .where(CombinationRow.id.in_(page_ids))
-                .options(selectinload(CombinationRow.values))
+            (
+                await self._session.execute(
+                    select(CombinationRow)
+                    .where(CombinationRow.id.in_(page_ids))
+                    .options(selectinload(CombinationRow.values))
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         combos_by_id = {row.id: _to_dto(row) for row in combo_rows}
 
         matching_rule_ids: dict[int, set[int]] = defaultdict(set)
@@ -161,7 +179,9 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
                         output=rules_by_id[rule_id].output,
                         title=rules_by_id[rule_id].title,
                     )
-                    for rule_id in sorted(matching_rule_ids[combination_id], key=apply_position.get)
+                    for rule_id in sorted(
+                        matching_rule_ids[combination_id], key=apply_position.get
+                    )
                 ],
             )
             for combination_id in page_ids  # already ordered by combination id
@@ -193,7 +213,9 @@ class SqlAlchemyCombinationQueries(CombinationQueries):
         later = matches.alias("later_matches")
 
         stmt = (
-            select(matches.c.rule_id, func.count(func.distinct(matches.c.combination_id)))
+            select(
+                matches.c.rule_id, func.count(func.distinct(matches.c.combination_id))
+            )
             .select_from(matches)
             .join(
                 later,

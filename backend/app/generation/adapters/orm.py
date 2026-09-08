@@ -14,7 +14,9 @@ from app.shared.database.orm_base import Base
 
 class GenerationJobRow(Base):
     __tablename__ = "generation_jobs"
-    __table_args__ = (Index("ix_generation_jobs_table_status", "decision_table_id", "status"),)
+    __table_args__ = (
+        Index("ix_generation_jobs_table_status", "decision_table_id", "status"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     decision_table_id: Mapped[int] = mapped_column(

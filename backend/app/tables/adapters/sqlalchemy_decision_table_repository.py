@@ -70,7 +70,9 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
         for factor in table.factors:
             if factor.id is None:
                 factor_row = FactorRow(
-                    decision_table_id=table.id, name=factor.name, order_index=factor.order_index
+                    decision_table_id=table.id,
+                    name=factor.name,
+                    order_index=factor.order_index,
                 )
                 self._session.add(factor_row)
                 await self._session.flush()
@@ -87,7 +89,9 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
             for value in factor.values:
                 if value.id is None:
                     value_row = FactorValueRow(
-                        factor_id=factor_row.id, value=value.value, order_index=value.order_index
+                        factor_id=factor_row.id,
+                        value=value.value,
+                        order_index=value.order_index,
                     )
                     self._session.add(value_row)
                     await self._session.flush()
@@ -118,6 +122,8 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
         stmt = (
             select(DecisionTableRow)
             .where(DecisionTableRow.id == table_id)
-            .options(selectinload(DecisionTableRow.factors).selectinload(FactorRow.values))
+            .options(
+                selectinload(DecisionTableRow.factors).selectinload(FactorRow.values)
+            )
         )
         return (await self._session.execute(stmt)).scalar_one_or_none()

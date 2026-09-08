@@ -1,6 +1,6 @@
-"""Request bodies for the `combinations` module's REST endpoints. Per ADR
-007, routers using these only parse input, build a typed mediator request,
-and serialize the result — no business logic lives here."""
+"""Request bodies for the `combinations` module's REST endpoints. Routers
+using these only parse input, call the module's command/query service, and
+serialize the result — no business logic lives here."""
 
 from __future__ import annotations
 

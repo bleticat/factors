@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 from app.combinations.entities import (
     Combination,
     CombinationValue,
@@ -26,144 +24,97 @@ from app.generation.errors import (
 )
 from app.generation.ports.generation_job_repository import GenerationJobRepository
 from app.generation.service import GenerationJobRef, to_ref
-from app.shared.mediator.requests import Command
 from app.tables.errors import DecisionTableNotFoundError
 from app.tables.ports.decision_table_repository import DecisionTableRepository
 
 
-@dataclass(frozen=True)
-class RequestGenerationCommand(Command[GenerationJobRef]):
-    table_id: int
+class GenerationCommands:
+    """The `generation` module's write-side use cases. Built per call by
+    `app.composition.build_generation_commands`."""
 
-
-class RequestGenerationHandler:
     def __init__(
         self,
         tables: DecisionTableRepository,
         jobs: GenerationJobRepository,
         combinations: CombinationRepository,
-        max_combinations: int,
     ) -> None:
         self._tables = tables
         self._jobs = jobs
         self._combinations = combinations
-        self._max_combinations = max_combinations
 
-    async def handle(self, request: RequestGenerationCommand) -> GenerationJobRef:
-        table = await self._tables.get(request.table_id)
+    async def request_generation(
+        self, table_id: int, *, max_combinations: int
+    ) -> GenerationJobRef:
+        table = await self._tables.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(request.table_id)
+            raise DecisionTableNotFoundError(table_id)
         if not table.factors:
-            raise NoFactorsError(request.table_id)
+            raise NoFactorsError(table_id)
         for factor in table.factors:
             if not factor.values:
                 raise FactorHasNoValuesError(factor.id or 0)
-        if await self._jobs.has_active_job(request.table_id):
-            raise GenerationAlreadyInProgressError(request.table_id)
+        if await self._jobs.has_active_job(table_id):
+            raise GenerationAlreadyInProgressError(table_id)
 
         total = total_combinations([len(f.values) for f in table.factors])
-        if total > self._max_combinations:
-            raise CombinationCapExceededError(total, self._max_combinations)
+        if total > max_combinations:
+            raise CombinationCapExceededError(total, max_combinations)
 
         # Delete-and-recreate regeneration semantics (v1 scope, see spec 002).
-        await self._combinations.delete_all_for_table(request.table_id)
+        await self._combinations.delete_all_for_table(table_id)
 
         job = await self._jobs.add(
             GenerationJob(
                 id=None,
-                decision_table_id=request.table_id,
+                decision_table_id=table_id,
                 status=GenerationJobStatus.PENDING,
                 total_combinations=total,
             )
         )
         return to_ref(job)
 
-
-@dataclass(frozen=True)
-class CancelGenerationJobCommand(Command[GenerationJobRef]):
-    job_id: int
-
-
-class CancelGenerationJobHandler:
-    def __init__(self, jobs: GenerationJobRepository) -> None:
-        self._jobs = jobs
-
-    async def handle(self, request: CancelGenerationJobCommand) -> GenerationJobRef:
-        job = await self._jobs.get(request.job_id)
+    async def cancel_generation_job(self, job_id: int) -> GenerationJobRef:
+        job = await self._jobs.get(job_id)
         if job is None:
-            raise GenerationJobNotFoundError(request.job_id)
+            raise GenerationJobNotFoundError(job_id)
         job.cancel()  # raises InvalidGenerationJobTransitionError if already terminal
         await self._jobs.save(job)
         return to_ref(job)
 
-
-@dataclass(frozen=True)
-class MarkGenerationJobFailedCommand(Command[GenerationJobRef]):
-    job_id: int
-    error_message: str
-
-
-class MarkGenerationJobFailedHandler:
-    def __init__(self, jobs: GenerationJobRepository) -> None:
-        self._jobs = jobs
-
-    async def handle(self, request: MarkGenerationJobFailedCommand) -> GenerationJobRef:
-        job = await self._jobs.get(request.job_id)
+    async def mark_generation_job_failed(
+        self, job_id: int, error_message: str
+    ) -> GenerationJobRef:
+        job = await self._jobs.get(job_id)
         if job is None:
-            raise GenerationJobNotFoundError(request.job_id)
-        job.fail(request.error_message)
+            raise GenerationJobNotFoundError(job_id)
+        job.fail(error_message)
         await self._jobs.save(job)
         return to_ref(job)
 
-
-@dataclass(frozen=True)
-class MarkStaleGenerationJobsFailedCommand(Command[int]):
-    job_ids: list[int] = field(default_factory=list)
-    error_message: str = "Interrupted by server restart"
-
-
-class MarkStaleGenerationJobsFailedHandler:
-    def __init__(self, jobs: GenerationJobRepository) -> None:
-        self._jobs = jobs
-
-    async def handle(self, request: MarkStaleGenerationJobsFailedCommand) -> int:
-        return await self._jobs.mark_failed_bulk(request.job_ids, request.error_message)
-
-
-@dataclass(frozen=True)
-class GenerateCombinationsBatchCommand(Command[GenerationJobRef]):
-    """The batching command at the heart of the generation design (see the
-    plan's "The mediator/async-job design" section and spec 002). One
-    dispatch of this command = one unit of work = one transaction = one
-    commit. The background loop (`generation/worker.py`) calls this
-    repeatedly; it is itself a boundary, not a handler, so it may call the
-    mediator in a loop without violating ADR 007's "handlers must not call
-    the mediator" guardrail."""
-
-    job_id: int
-    batch_size: int = 500
-
-
-class GenerateCombinationsBatchHandler:
-    def __init__(
+    async def mark_stale_generation_jobs_failed(
         self,
-        jobs: GenerationJobRepository,
-        tables: DecisionTableRepository,
-        combinations: CombinationRepository,
-    ) -> None:
-        self._jobs = jobs
-        self._tables = tables
-        self._combinations = combinations
+        job_ids: list[int] | None = None,
+        error_message: str = "Interrupted by server restart",
+    ) -> int:
+        return await self._jobs.mark_failed_bulk(job_ids or [], error_message)
 
-    async def handle(self, request: GenerateCombinationsBatchCommand) -> GenerationJobRef:
-        # Read live status/cursor fresh, inside this dispatch's own
+    async def generate_combinations_batch(
+        self, job_id: int, batch_size: int = 500
+    ) -> GenerationJobRef:
+        """The batching use case at the heart of the generation design (see
+        the plan's "The async-job design" section and spec 002).
+        One call = one unit of work = one transaction = one commit. The
+        background loop (`generation/worker.py`) calls this repeatedly; it
+        is itself a boundary, not a handler, so it may loop over it freely.
+        """
+        # Read live status/cursor fresh, inside this call's own
         # transaction — the job row is the sole source of truth, so this
-        # handler (and the loop driving it) carries no state of its own
+        # method (and the loop driving it) carries no state of its own
         # and can safely resume after a crash or observe a concurrent
         # cancel (see spec 002).
-        job = await self._jobs.get_for_update(request.job_id)
+        job = await self._jobs.get_for_update(job_id)
         if job is None:
-            raise GenerationJobNotFoundError(request.job_id)
+            raise GenerationJobNotFoundError(job_id)
 
         if job.status in TERMINAL_STATUSES:
             # Idempotent no-op: already completed/failed/cancelled.
@@ -178,9 +129,11 @@ class GenerateCombinationsBatchHandler:
         ordered_factors = table.ordered_factors()
         value_counts = [len(f.values) for f in ordered_factors]
 
-        batch_end = min(job.cursor + request.batch_size, job.total_combinations)
+        batch_end = min(job.cursor + batch_size, job.total_combinations)
         new_combinations = [
-            self._build_combination(job.decision_table_id, job.id or 0, ordered_factors, value_counts, index)
+            self._build_combination(
+                job.decision_table_id, job.id or 0, ordered_factors, value_counts, index
+            )
             for index in range(job.cursor, batch_end)
         ]
 
@@ -191,10 +144,13 @@ class GenerateCombinationsBatchHandler:
         return to_ref(job)
 
     @staticmethod
-    def _build_combination(table_id: int, job_id: int, ordered_factors, value_counts, index: int) -> Combination:
+    def _build_combination(
+        table_id: int, job_id: int, ordered_factors, value_counts, index: int
+    ) -> Combination:
         picks = decompose_index(index, value_counts)
         factor_value_ids = [
-            ordered_factors[i].values[picks[i]].id or 0 for i in range(len(ordered_factors))
+            ordered_factors[i].values[picks[i]].id or 0
+            for i in range(len(ordered_factors))
         ]
         return Combination(
             id=None,
@@ -202,7 +158,10 @@ class GenerateCombinationsBatchHandler:
             generation_job_id=job_id,
             signature=build_signature(factor_value_ids),
             values=[
-                CombinationValue(factor_id=ordered_factors[i].id or 0, factor_value_id=factor_value_ids[i])
+                CombinationValue(
+                    factor_id=ordered_factors[i].id or 0,
+                    factor_value_id=factor_value_ids[i],
+                )
                 for i in range(len(ordered_factors))
             ],
         )

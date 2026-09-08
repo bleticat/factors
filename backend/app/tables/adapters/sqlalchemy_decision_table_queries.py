@@ -24,7 +24,9 @@ class SqlAlchemyDecisionTableQueries(DecisionTableQueries):
         stmt = (
             select(DecisionTableRow)
             .where(DecisionTableRow.id == table_id)
-            .options(selectinload(DecisionTableRow.factors).selectinload(FactorRow.values))
+            .options(
+                selectinload(DecisionTableRow.factors).selectinload(FactorRow.values)
+            )
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         if row is None:
@@ -39,7 +41,9 @@ class SqlAlchemyDecisionTableQueries(DecisionTableQueries):
                     name=f.name,
                     order_index=f.order_index,
                     values=[
-                        FactorValueDTO(id=v.id, value=v.value, order_index=v.order_index)
+                        FactorValueDTO(
+                            id=v.id, value=v.value, order_index=v.order_index
+                        )
                         for v in f.values
                     ],
                 )
@@ -49,7 +53,9 @@ class SqlAlchemyDecisionTableQueries(DecisionTableQueries):
 
     async def list_summaries(self, page: PageRequest) -> Page[DecisionTableSummaryDTO]:
         total = (
-            await self._session.execute(select(func.count()).select_from(DecisionTableRow))
+            await self._session.execute(
+                select(func.count()).select_from(DecisionTableRow)
+            )
         ).scalar_one()
 
         stmt = (

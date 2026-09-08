@@ -50,7 +50,9 @@ class RuleTagDTO:
 @dataclass(frozen=True)
 class CombinationOverlapDTO:
     combination: CombinationDTO
-    matching_rules: list[RuleTagDTO]  # ordered by rule id ascending; last is the current winner (spec 005)
+    matching_rules: list[
+        RuleTagDTO
+    ]  # ordered by rule id ascending; last is the current winner (spec 005)
 
 
 class CombinationQueries(ABC):
@@ -60,7 +62,9 @@ class CombinationQueries(ABC):
     ) -> Page[CombinationDTO]: ...
 
     @abstractmethod
-    async def get(self, table_id: int, combination_id: int) -> CombinationDTO | None: ...
+    async def get(
+        self, table_id: int, combination_id: int
+    ) -> CombinationDTO | None: ...
 
     @abstractmethod
     async def find_by_exact_assignment(

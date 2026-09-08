@@ -38,5 +38,7 @@ class RuleRepository(ABC):
         delete_all_for_table`."""
 
     @abstractmethod
-    async def record_apply(self, rule_id: int, matched_count: int, applied_at: datetime) -> None:
+    async def record_apply(
+        self, rule_id: int, matched_count: int, applied_at: datetime
+    ) -> None:
         """Persist the outcome of (re)applying a rule."""

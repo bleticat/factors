@@ -48,8 +48,12 @@ class RuleValueRow(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    rule_id: Mapped[int] = mapped_column(ForeignKey("rules.id", ondelete="CASCADE"), nullable=False)
-    factor_id: Mapped[int] = mapped_column(ForeignKey("factors.id", ondelete="CASCADE"), nullable=False)
+    rule_id: Mapped[int] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False
+    )
+    factor_id: Mapped[int] = mapped_column(
+        ForeignKey("factors.id", ondelete="CASCADE"), nullable=False
+    )
     factor_value_id: Mapped[int] = mapped_column(
         ForeignKey("factor_values.id", ondelete="CASCADE"), nullable=False
     )
