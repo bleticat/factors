@@ -24,7 +24,9 @@ class RuleApplyRef:
     applied_at: datetime
 
 
-async def apply_rule(combinations: CombinationRepository, rules: RuleRepository, rule: Rule) -> RuleApplyRef:
+async def apply_rule(
+    combinations: CombinationRepository, rules: RuleRepository, rule: Rule
+) -> RuleApplyRef:
     """Shared "apply a rule to the table's current combinations" logic, used
     by both `CreateRuleCommand` (apply once, immediately) and
     `ReapplyRulesCommand` (replay every rule after regeneration or on
@@ -34,12 +36,18 @@ async def apply_rule(combinations: CombinationRepository, rules: RuleRepository,
     assert rule.id is not None
     filter_ = CombinationFilter(
         factor_values=tuple(
-            FactorValueAssignment(factor_id=a.factor_id, factor_value_id=a.factor_value_id)
+            FactorValueAssignment(
+                factor_id=a.factor_id, factor_value_id=a.factor_value_id
+            )
             for a in rule.factor_values
         )
     )
-    patch = CombinationPatch(status=CombinationStatus.POSSIBLE, output=rule.output, output_set=True)
-    matched, _ = await combinations.bulk_update_status(rule.decision_table_id, filter_, patch)
+    patch = CombinationPatch(
+        status=CombinationStatus.POSSIBLE, output=rule.output, output_set=True
+    )
+    matched, _ = await combinations.bulk_update_status(
+        rule.decision_table_id, filter_, patch
+    )
 
     applied_at = datetime.now(UTC).replace(tzinfo=None)
     await rules.record_apply(rule.id, matched, applied_at)

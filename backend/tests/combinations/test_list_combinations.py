@@ -1,37 +1,55 @@
-from app.combinations.queries import ListCombinationsQuery
+from app.composition import build_combinations_queries
+from app.shared.execution import run_query
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 
-async def test_list_combinations_filters_by_status(mediator):
-    fixture = await build_standard_table(mediator)
+async def test_list_combinations_filters_by_status(database):
+    fixture = await build_standard_table(database)
     table_id = fixture["table_id"]
-    await generate_and_wait(mediator, table_id)
+    await generate_and_wait(database, table_id)
 
-    all_page = await mediator.execute(ListCombinationsQuery(table_id=table_id, page=PageRequest(limit=100)))
+    all_page = await run_query(
+        database,
+        lambda scope: build_combinations_queries(scope).list_combinations(
+            table_id=table_id, page=PageRequest(limit=100)
+        ),
+    )
     assert all_page.total == 18
 
-    unreviewed = await mediator.execute(
-        ListCombinationsQuery(table_id=table_id, status="unreviewed", page=PageRequest(limit=100))
+    unreviewed = await run_query(
+        database,
+        lambda scope: build_combinations_queries(scope).list_combinations(
+            table_id=table_id, status="unreviewed", page=PageRequest(limit=100)
+        ),
     )
     assert unreviewed.total == 18
 
-    possible = await mediator.execute(
-        ListCombinationsQuery(table_id=table_id, status="possible", page=PageRequest(limit=100))
+    possible = await run_query(
+        database,
+        lambda scope: build_combinations_queries(scope).list_combinations(
+            table_id=table_id, status="possible", page=PageRequest(limit=100)
+        ),
     )
     assert possible.total == 0
 
 
-async def test_list_combinations_paginates_across_a_page_boundary(mediator):
-    fixture = await build_standard_table(mediator)
+async def test_list_combinations_paginates_across_a_page_boundary(database):
+    fixture = await build_standard_table(database)
     table_id = fixture["table_id"]
-    await generate_and_wait(mediator, table_id)
+    await generate_and_wait(database, table_id)
 
-    first_page = await mediator.execute(
-        ListCombinationsQuery(table_id=table_id, page=PageRequest(limit=10, offset=0))
+    first_page = await run_query(
+        database,
+        lambda scope: build_combinations_queries(scope).list_combinations(
+            table_id=table_id, page=PageRequest(limit=10, offset=0)
+        ),
     )
-    second_page = await mediator.execute(
-        ListCombinationsQuery(table_id=table_id, page=PageRequest(limit=10, offset=10))
+    second_page = await run_query(
+        database,
+        lambda scope: build_combinations_queries(scope).list_combinations(
+            table_id=table_id, page=PageRequest(limit=10, offset=10)
+        ),
     )
     assert len(first_page.items) == 10
     assert len(second_page.items) == 8

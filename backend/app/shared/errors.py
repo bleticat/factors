@@ -35,13 +35,7 @@ class DuplicateFactorInAssignmentError(ValidationError):
     here rather than in one of them."""
 
     def __init__(self, factor_id: int) -> None:
-        super().__init__(f"Factor {factor_id} is assigned more than once in the same request")
+        super().__init__(
+            f"Factor {factor_id} is assigned more than once in the same request"
+        )
         self.factor_id = factor_id
-
-
-class UnregisteredRequestError(Exception):
-    """Raised by the mediator when no handler factory is registered for a request type."""
-
-    def __init__(self, request_type: type) -> None:
-        super().__init__(f"No handler registered for request type {request_type.__name__!r}")
-        self.request_type = request_type

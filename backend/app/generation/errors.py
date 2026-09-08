@@ -20,13 +20,17 @@ class GenerationInProgressError(ValidationError):
 
 class GenerationAlreadyInProgressError(ValidationError):
     def __init__(self, table_id: int) -> None:
-        super().__init__(f"Decision table {table_id} already has a generation job in progress")
+        super().__init__(
+            f"Decision table {table_id} already has a generation job in progress"
+        )
         self.table_id = table_id
 
 
 class InvalidGenerationJobTransitionError(ValidationError):
     def __init__(self, job_id: int, from_status: str, to_status: str) -> None:
-        super().__init__(f"Generation job {job_id} cannot go from {from_status} to {to_status}")
+        super().__init__(
+            f"Generation job {job_id} cannot go from {from_status} to {to_status}"
+        )
         self.job_id = job_id
         self.from_status = from_status
         self.to_status = to_status

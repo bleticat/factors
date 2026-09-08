@@ -22,7 +22,7 @@ Query requests are data-only inputs for read use cases. They describe the reques
 
 Query handlers implement read behavior. They can return entities, projections, or read models and may be optimized for specific read needs without reshaping command handlers.
 
-Boundary layers submit typed command or query requests to the application mediator. They must not coordinate repositories, instantiate handlers, or duplicate command rules.
+Boundary layers call the relevant module's command or query service (e.g. `TablesCommands`, `RulesQueries`) with a typed request shape. They must not coordinate repositories, instantiate handlers, or duplicate command rules.
 
 When a workflow needs a write and refreshed data, run a command request, then a query request. The follow-up query reads committed command results from the primary read path unless a later ADR explicitly introduces eventually consistent read models or replicas.
 
@@ -40,7 +40,7 @@ Queries can evolve for performance, screens, reports, and integrations.
 
 Read models can change without reshaping command APIs.
 
-Tests can target write and read contracts separately while exercising the shared mediator lifecycle.
+Tests can target write and read contracts separately while exercising the same command/query service lifecycle production code uses.
 
 ## Cons
 
@@ -54,4 +54,3 @@ The term `command` now refers to a request type; use `command handler` when refe
 
 - Used by: [003. Project Structure](./003-project-structure.md)
 - Used by: [004. Database Interactions](./004-database-interactions.md)
-- Refined by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

@@ -18,7 +18,8 @@ def _to_dto(row: RuleRow) -> RuleDTO:
         title=row.title,
         order_index=row.order_index,
         factor_values=[
-            RuleValueDTO(factor_id=v.factor_id, factor_value_id=v.factor_value_id) for v in row.values
+            RuleValueDTO(factor_id=v.factor_id, factor_value_id=v.factor_value_id)
+            for v in row.values
         ],
         matched_count=row.matched_count,
         applied_at=row.applied_at,
@@ -31,7 +32,9 @@ class SqlAlchemyRuleQueries(RuleQueries):
         self._session: AsyncSession = scope.session
 
     async def list_for_table(self, table_id: int, page: PageRequest) -> Page[RuleDTO]:
-        count_stmt = select(func.count(RuleRow.id)).where(RuleRow.decision_table_id == table_id)
+        count_stmt = select(func.count(RuleRow.id)).where(
+            RuleRow.decision_table_id == table_id
+        )
         total = (await self._session.execute(count_stmt)).scalar_one()
 
         stmt = (
@@ -43,7 +46,12 @@ class SqlAlchemyRuleQueries(RuleQueries):
             .offset(page.offset)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
-        return Page(items=[_to_dto(row) for row in rows], total=total, limit=page.limit, offset=page.offset)
+        return Page(
+            items=[_to_dto(row) for row in rows],
+            total=total,
+            limit=page.limit,
+            offset=page.offset,
+        )
 
     async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:
         stmt = (

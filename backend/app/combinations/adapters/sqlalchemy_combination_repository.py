@@ -88,8 +88,12 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
     async def bulk_update_status(
         self, table_id: int, filter_: CombinationFilter, patch: CombinationPatch
     ) -> tuple[int, int]:
-        matched_stmt = apply_combination_filter(select(CombinationRow.id), table_id, filter_)
-        matched_ids = [row[0] for row in (await self._session.execute(matched_stmt)).all()]
+        matched_stmt = apply_combination_filter(
+            select(CombinationRow.id), table_id, filter_
+        )
+        matched_ids = [
+            row[0] for row in (await self._session.execute(matched_stmt)).all()
+        ]
         if not matched_ids:
             return 0, 0
 
@@ -104,12 +108,18 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
         if not values:
             return len(matched_ids), 0
 
-        stmt = update(CombinationRow).where(CombinationRow.id.in_(matched_ids)).values(**values)
+        stmt = (
+            update(CombinationRow)
+            .where(CombinationRow.id.in_(matched_ids))
+            .values(**values)
+        )
         result = await self._session.execute(stmt)
         await self._session.flush()
         return len(matched_ids), result.rowcount or 0
 
     async def delete_all_for_table(self, table_id: int) -> None:
-        stmt = delete(CombinationRow).where(CombinationRow.decision_table_id == table_id)
+        stmt = delete(CombinationRow).where(
+            CombinationRow.decision_table_id == table_id
+        )
         await self._session.execute(stmt)
         await self._session.flush()

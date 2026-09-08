@@ -8,7 +8,7 @@ Status: Active
 
 We are moving to spec-driven development. New features need a written use case before code so tests and implementation have a shared target.
 
-Use cases are now invoked through typed command and query requests handled by the mediator.
+Use cases are now invoked as typed methods on a module's `Commands`/`Queries` service.
 
 ## Decision
 
@@ -23,7 +23,7 @@ Feature workflow:
 1. Write or update the feature spec.
 2. List material test cases and coverage obligations before implementation.
 3. Add tests matching the listed cases.
-4. Implement through command/query requests, handlers, ports, mediator registration, and adapters.
+4. Implement through command/query service methods, ports, composition-root wiring, and adapters.
 5. Keep the spec and tests in sync when behavior changes.
 
 Suggested feature spec structure:
@@ -35,7 +35,7 @@ Suggested feature spec structure:
 - `## Test Cases`
 - `## Open Questions`
 
-`## Commands and Queries` should name the command and query requests involved, their expected results, and any mediator-visible lifecycle expectations.
+`## Commands and Queries` should name the command and query methods involved, their expected results, and any transaction/lifecycle expectations.
 
 `## Test Cases` is required. It should list the material scenarios the implementation is expected to cover, including success, validation, edge, regression, lifecycle, and transaction cases when relevant. The list can link to concrete tests after they are added and does not need to enumerate trivial permutations.
 
@@ -67,4 +67,3 @@ Cross-context use cases may require judgment about spec ownership.
 
 - Depends on: [003. Project Structure](./003-project-structure.md)
 - Depends on: [005. Tests Structure](./005-tests-structure.md)
-- Depends on: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

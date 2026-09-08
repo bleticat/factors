@@ -40,7 +40,9 @@ class DecisionTableRow(Base):
 
 class FactorRow(Base):
     __tablename__ = "factors"
-    __table_args__ = (UniqueConstraint("decision_table_id", "name", name="uq_factor_table_name"),)
+    __table_args__ = (
+        UniqueConstraint("decision_table_id", "name", name="uq_factor_table_name"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     decision_table_id: Mapped[int] = mapped_column(
@@ -63,7 +65,9 @@ class FactorValueRow(Base):
     __table_args__ = (UniqueConstraint("factor_id", "value", name="uq_factor_value"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    factor_id: Mapped[int] = mapped_column(ForeignKey("factors.id", ondelete="CASCADE"), nullable=False)
+    factor_id: Mapped[int] = mapped_column(
+        ForeignKey("factors.id", ondelete="CASCADE"), nullable=False
+    )
     value: Mapped[str] = mapped_column(String, nullable=False)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
 
