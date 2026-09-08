@@ -19,7 +19,7 @@ from app.shared.database.port import Database, ReadScope, UnitOfWork
 class SqlAlchemyUnitOfWork(UnitOfWork):
     """Implements the opaque `UnitOfWork` port, but — being itself part of
     the SQLAlchemy adapter layer — is free to carry a public `session`.
-    Other adapters in `decision_tables/adapters/` depend on this concrete
+    Other adapters (e.g. `app/tables/adapters/`) depend on this concrete
     class directly (not on the abstract `UnitOfWork`) to reach it; that's a
     concrete-to-concrete dependency between two adapter modules, which is
     fine — the boundary ADR 004 actually cares about is that command/query

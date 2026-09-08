@@ -21,8 +21,8 @@ open sessions/scopes.
 agnostic (ADR 004's "concrete database code lives in adapters" — that
 includes the database *driver*, not just the SQL dialect). The concrete
 adapter (`sqlalchemy_database.py`) attaches a public `session` to its own
-`SqlAlchemyUnitOfWork`/`SqlAlchemyReadScope` classes; context-specific
-repository/query adapters (e.g. `decision_tables/adapters/`) depend on
+`SqlAlchemyUnitOfWork`/`SqlAlchemyReadScope` classes; module-specific
+repository/query adapters (e.g. `app/tables/adapters/`) depend on
 those concrete classes directly to reach it — a concrete-to-concrete
 dependency between two adapter modules, not a leak through this port,
 since the composition root passes the concrete scope straight through
