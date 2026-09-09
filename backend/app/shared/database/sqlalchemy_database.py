@@ -1,4 +1,9 @@
-"""SQLAlchemy async implementation of the `Database` port."""
+"""SQLAlchemy async implementation of the `Database` port — the sole place
+that wires every module's concrete repository/query adapters together
+(absorbing what a separate composition-root file used to do; see
+`app/shared/database/port.py`'s docstring for why that's an acknowledged
+exception to ADR 003's shared/-stays-generic rule rather than a leak).
+"""
 
 from __future__ import annotations
 
@@ -13,29 +18,40 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.shared.database.port import Database, ReadScope, UnitOfWork
+from app.combinations.adapters.sqlalchemy_combination_queries import (
+    SqlAlchemyCombinationQueries,
+)
+from app.combinations.adapters.sqlalchemy_combination_repository import (
+    SqlAlchemyCombinationRepository,
+)
+from app.generation.adapters.sqlalchemy_generation_job_queries import (
+    SqlAlchemyGenerationJobQueries,
+)
+from app.generation.adapters.sqlalchemy_generation_job_repository import (
+    SqlAlchemyGenerationJobRepository,
+)
+from app.rules.adapters.sqlalchemy_rule_queries import SqlAlchemyRuleQueries
+from app.rules.adapters.sqlalchemy_rule_repository import SqlAlchemyRuleRepository
+from app.shared.database.port import Database, UnitOfWork
+from app.tables.adapters.sqlalchemy_decision_table_queries import (
+    SqlAlchemyDecisionTableQueries,
+)
+from app.tables.adapters.sqlalchemy_decision_table_repository import (
+    SqlAlchemyDecisionTableRepository,
+)
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
-    """Implements the opaque `UnitOfWork` port, but — being itself part of
-    the SQLAlchemy adapter layer — is free to carry a public `session`.
-    Other adapters (e.g. `app/tables/adapters/`) depend on this concrete
-    class directly (not on the abstract `UnitOfWork`) to reach it; that's a
-    concrete-to-concrete dependency between two adapter modules, which is
-    fine — the boundary ADR 004 actually cares about is that command/query
-    *handlers* only ever depend on the abstract repository/query ports,
-    never on this class or SQLAlchemy.
-    """
+    """One open transaction's repositories, all bound to the same
+    `AsyncSession` — so cross-module writes inside one use-case method
+    (e.g. `TablesUseCases.delete_factor` cascading into `combinations`/
+    `rules`) share that one transaction automatically."""
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-
-class SqlAlchemyReadScope(ReadScope):
-    """`SqlAlchemyUnitOfWork`'s counterpart for the read path."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+        self.tables = SqlAlchemyDecisionTableRepository(session)
+        self.jobs = SqlAlchemyGenerationJobRepository(session)
+        self.combinations = SqlAlchemyCombinationRepository(session)
+        self.rules = SqlAlchemyRuleRepository(session)
 
 
 def create_engine(database_url: str) -> AsyncEngine:
@@ -61,18 +77,15 @@ class SqlAlchemyDatabase(Database):
         self._session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=engine, expire_on_commit=False
         )
+        # Long-lived — each Queries adapter opens/closes its own session
+        # per call (see their `__init__`s), so there's no per-request
+        # "read scope" to manage here.
+        self.tables_queries = SqlAlchemyDecisionTableQueries(self._session_factory)
+        self.combinations_queries = SqlAlchemyCombinationQueries(self._session_factory)
+        self.rules_queries = SqlAlchemyRuleQueries(self._session_factory)
+        self.jobs_queries = SqlAlchemyGenerationJobQueries(self._session_factory)
 
     @asynccontextmanager
     async def unit_of_work(self) -> AsyncIterator[UnitOfWork]:
         async with self._session_factory() as session, session.begin():
             yield SqlAlchemyUnitOfWork(session)
-
-    @asynccontextmanager
-    async def read_scope(self) -> AsyncIterator[ReadScope]:
-        async with self._session_factory() as session:
-            try:
-                yield SqlAlchemyReadScope(session)
-            finally:
-                # Never commit on the read path, even if a handler
-                # mistakenly wrote through it (see port.py docstring).
-                await session.rollback()

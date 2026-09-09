@@ -4,7 +4,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 from app.tables.adapters.orm import DecisionTableRow, FactorRow, FactorValueRow
 from app.tables.entities import DecisionTable, Factor, FactorValue
 from app.tables.ports.decision_table_repository import DecisionTableRepository
@@ -31,8 +30,8 @@ def _to_domain(row: DecisionTableRow) -> DecisionTable:
 
 
 class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
-    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
-        self._session: AsyncSession = uow.session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
     async def add(self, table: DecisionTable) -> DecisionTable:
         row = DecisionTableRow(name=table.name, description=table.description)

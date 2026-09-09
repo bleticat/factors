@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 from app.rules.adapters.orm import RuleRow, RuleValueRow
 from app.rules.entities import Rule, RuleAssignment
 from app.rules.ports.rule_repository import RuleRepository
-from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 
 
 def _to_domain(row: RuleRow) -> Rule:
@@ -29,8 +28,8 @@ def _to_domain(row: RuleRow) -> Rule:
 
 
 class SqlAlchemyRuleRepository(RuleRepository):
-    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
-        self._session: AsyncSession = uow.session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
     async def add(self, rule: Rule) -> Rule:
         row = RuleRow(

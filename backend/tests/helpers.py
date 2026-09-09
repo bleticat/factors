@@ -5,11 +5,11 @@ must never hide the use-case call a test is actually verifying.
 
 from __future__ import annotations
 
-from app.composition import build_generation_commands, build_tables_commands
 from app.generation.entities import TERMINAL_STATUSES
 from app.generation.service import GenerationJobRef
+from app.generation.use_cases import GenerationUseCases
 from app.shared.database.port import Database
-from app.shared.execution import run_command
+from app.tables.use_cases import TablesUseCases
 
 _TERMINAL_STATUS_VALUES = {str(status) for status in TERMINAL_STATUSES}
 
@@ -23,29 +23,17 @@ DEFAULT_TEST_MAX_COMBINATIONS = 1000
 async def create_table(
     database: Database, name: str = "Test table", description: str | None = None
 ) -> int:
-    ref = await run_command(
-        database,
-        lambda uow: build_tables_commands(uow).create_decision_table(name, description),
-    )
+    ref = await TablesUseCases(database).create_decision_table(name, description)
     return ref.id
 
 
 async def add_factor_with_values(
     database: Database, table_id: int, name: str, values: list[str]
 ) -> tuple[int, list[int]]:
-    factor = await run_command(
-        database, lambda uow: build_tables_commands(uow).add_factor(table_id, name)
-    )
+    tables = TablesUseCases(database)
+    factor = await tables.add_factor(table_id, name)
     value_ids = [
-        (
-            await run_command(
-                database,
-                lambda uow, v=v: build_tables_commands(uow).add_factor_value(
-                    table_id, factor.id, v
-                ),
-            )
-        ).id
-        for v in values
+        (await tables.add_factor_value(table_id, factor.id, v)).id for v in values
     ]
     return factor.id, value_ids
 
@@ -80,18 +68,11 @@ async def generate_and_wait(
     *,
     max_combinations: int = DEFAULT_TEST_MAX_COMBINATIONS,
 ) -> GenerationJobRef:
-    job = await run_command(
-        database,
-        lambda uow: build_generation_commands(uow).request_generation(
-            table_id, max_combinations=max_combinations
-        ),
+    generation = GenerationUseCases(database)
+    job = await generation.request_generation(
+        table_id, max_combinations=max_combinations
     )
     result: GenerationJobRef = job
     while result.status not in _TERMINAL_STATUS_VALUES:
-        result = await run_command(
-            database,
-            lambda uow: build_generation_commands(uow).generate_combinations_batch(
-                job.id, batch_size
-            ),
-        )
+        result = await generation.generate_combinations_batch(job.id, batch_size)
     return result

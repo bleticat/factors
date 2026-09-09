@@ -1,32 +1,32 @@
 """The database port (ADR 004).
 
-`Database` is the only thing boundaries (API routes via `app/shared/api.py`,
-the background worker, the startup sweep, tests) need to get a scope to run
-a module's `Commands`/`Queries` service in. It hands out two kinds:
+`Database` is the only thing use-case classes need to do their work: it
+exposes `unit_of_work()` for writes (one transaction per call — a use
+case's own methods decide when to open one, and may open more than one if
+it genuinely has independent-commit steps), and holds every module's
+read-side `...Queries` service directly as a long-lived attribute
+(`database.tables_queries`, `database.rules_queries`, ...). There is no
+separate per-call "read scope" concept — a query method's own internal
+session open/close already gives it everything a scope used to provide,
+and nothing in any `Queries` adapter ever writes.
 
-- `unit_of_work()`: for writes. Backed by a transaction; commits on normal
-  exit, rolls back on exception. `app.composition`'s `build_*_commands`
-  factories build write-side repositories from the `UnitOfWork`'s session.
-- `read_scope()`: for reads. Never opens a write transaction and never
-  commits — even if a query mistakenly executes a write through it, nothing
-  persists, because the scope always rolls back on exit. This is the
-  structural enforcement of "queries can't write" called for in the plan,
-  independent of any type-checking discipline.
+`UnitOfWork` holds every module's write-side repository as an attribute
+(`uow.tables`, `uow.jobs`, `uow.combinations`, `uow.rules`) — one per open
+transaction.
 
-This port must not expose module-specific command/query types or service
-classes — it only knows how to open sessions/scopes.
+Both `UnitOfWork` and `Database` declare these as abstract-port-typed
+attributes (not raw sessions), so use-case code never imports SQLAlchemy
+or any concrete adapter class — it only ever sees the abstract repository/
+query ports each attribute is typed with. The concrete implementation
+(`sqlalchemy_database.py`) is the one place that constructs the concrete
+adapters and attaches them.
 
-`UnitOfWork` and `ReadScope` are deliberately opaque marker types here: a
-"session" is a SQLAlchemy concept, and this module must stay technology-
-agnostic (ADR 004's "concrete database code lives in adapters" — that
-includes the database *driver*, not just the SQL dialect). The concrete
-adapter (`sqlalchemy_database.py`) attaches a public `session` to its own
-`SqlAlchemyUnitOfWork`/`SqlAlchemyReadScope` classes; module-specific
-repository/query adapters (e.g. `app/tables/adapters/`) depend on
-those concrete classes directly to reach it — a concrete-to-concrete
-dependency between two adapter modules, not a leak through this port,
-since the composition root passes the concrete scope straight through
-without ever needing to know it has a `.session`.
+This means `port.py` itself now imports every module's `ports/` (for these
+type annotations) — a deliberate, acknowledged relaxation of ADR 003's
+"shared/ must not hold domain behavior that belongs to one context": this
+app is genuinely one bounded context split into modules for file size, not
+several true DDD-separate contexts. Worth its own ADR rather than letting
+ADR 003 quietly go stale.
 """
 
 from __future__ import annotations
@@ -34,16 +34,31 @@ from __future__ import annotations
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from app.combinations.ports.combination_queries import CombinationQueries
+from app.combinations.ports.combination_repository import CombinationRepository
+from app.generation.ports.generation_job_queries import GenerationJobQueries
+from app.generation.ports.generation_job_repository import GenerationJobRepository
+from app.rules.ports.rule_queries import RuleQueries
+from app.rules.ports.rule_repository import RuleRepository
+from app.tables.ports.decision_table_queries import DecisionTableQueries
+from app.tables.ports.decision_table_repository import DecisionTableRepository
+
 
 class UnitOfWork(Protocol):
-    """Opaque handle for one command's transactional scope."""
+    """One transaction's worth of every module's write-side repository."""
 
-
-class ReadScope(Protocol):
-    """Opaque handle for one query's read-only scope."""
+    tables: DecisionTableRepository
+    jobs: GenerationJobRepository
+    combinations: CombinationRepository
+    rules: RuleRepository
 
 
 class Database(Protocol):
-    def unit_of_work(self) -> AbstractAsyncContextManager[UnitOfWork]: ...
+    """Long-lived — constructed once at app startup, not per request."""
 
-    def read_scope(self) -> AbstractAsyncContextManager[ReadScope]: ...
+    tables_queries: DecisionTableQueries
+    combinations_queries: CombinationQueries
+    rules_queries: RuleQueries
+    jobs_queries: GenerationJobQueries
+
+    def unit_of_work(self) -> AbstractAsyncContextManager[UnitOfWork]: ...

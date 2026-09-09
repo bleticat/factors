@@ -1,35 +1,27 @@
-"""Thin HTTP boundary: parse input, call the module's command/query
-service, serialize the result."""
+"""Thin HTTP boundary: parse input, call the module's use cases, serialize
+the result."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
 from app.combinations.api import schemas
-from app.combinations.commands import (
+from app.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchInput,
-    CombinationsCommands,
+    CombinationsUseCases,
 )
-from app.combinations.queries import CombinationsQueries
-from app.composition import build_combinations_commands, build_combinations_queries
-from app.shared.api import get_read_scope, get_uow
-from app.shared.database.port import ReadScope, UnitOfWork
+from app.shared.api import get_database
+from app.shared.database.port import Database
 from app.shared.pagination import PageRequest
 
 router = APIRouter()
 
 
-def get_combinations_commands(
-    uow: UnitOfWork = Depends(get_uow),
-) -> CombinationsCommands:
-    return build_combinations_commands(uow)
-
-
-def get_combinations_queries(
-    scope: ReadScope = Depends(get_read_scope),
-) -> CombinationsQueries:
-    return build_combinations_queries(scope)
+def get_combinations_use_cases(
+    database: Database = Depends(get_database),
+) -> CombinationsUseCases:
+    return CombinationsUseCases(database)
 
 
 @router.get("/{table_id}/combinations")
@@ -39,11 +31,11 @@ async def list_combinations(
     fv: list[str] = Query(default_factory=list),
     limit: int = 50,
     offset: int = 0,
-    queries: CombinationsQueries = Depends(get_combinations_queries),
+    use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
     """`fv` is a repeatable `factor_id:factor_value_id` pair, e.g.
     `?fv=3:9&fv=5:14` — the same AND-ed filter shape bulk-patch uses."""
-    return await queries.list_combinations(
+    return await use_cases.list_combinations(
         table_id=table_id,
         status=status,
         factor_values=tuple(_parse_factor_value_pair(pair) for pair in fv),
@@ -61,10 +53,10 @@ async def patch_combination(
     table_id: int,
     combination_id: int,
     body: schemas.PatchCombinationRequest,
-    commands: CombinationsCommands = Depends(get_combinations_commands),
+    use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
     fields = body.model_fields_set
-    return await commands.patch_combination(
+    return await use_cases.patch_combination(
         table_id=table_id,
         combination_id=combination_id,
         status=body.status,
@@ -79,10 +71,10 @@ async def patch_combination(
 async def bulk_patch_combinations(
     table_id: int,
     body: schemas.BulkPatchCombinationsRequest,
-    commands: CombinationsCommands = Depends(get_combinations_commands),
+    use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
     patch_fields = body.patch.model_fields_set
-    return await commands.bulk_patch_combinations(
+    return await use_cases.bulk_patch_combinations(
         table_id=table_id,
         filter=BulkFilterInput(
             status=body.filter.status,
@@ -102,9 +94,9 @@ async def bulk_patch_combinations(
 async def evaluate(
     table_id: int,
     body: schemas.EvaluateRequest,
-    queries: CombinationsQueries = Depends(get_combinations_queries),
+    use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
-    return await queries.evaluate_combinations(
+    return await use_cases.evaluate_combinations(
         table_id=table_id,
         assignment=tuple(body.assignment),
         page=PageRequest(limit=body.limit, offset=body.offset),

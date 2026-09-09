@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.generation.adapters.orm import GenerationJobRow
 from app.generation.entities import ACTIVE_STATUSES, GenerationJob, GenerationJobStatus
 from app.generation.ports.generation_job_repository import GenerationJobRepository
-from app.shared.database.sqlalchemy_database import SqlAlchemyUnitOfWork
 
 
 def _to_domain(row: GenerationJobRow) -> GenerationJob:
@@ -24,8 +23,8 @@ def _to_domain(row: GenerationJobRow) -> GenerationJob:
 
 
 class SqlAlchemyGenerationJobRepository(GenerationJobRepository):
-    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
-        self._session: AsyncSession = uow.session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
     async def add(self, job: GenerationJob) -> GenerationJob:
         row = GenerationJobRow(

@@ -4,17 +4,13 @@ evaluate (full and partial). Composes commands and queries from all four
 feature specs, so it belongs here rather than under commands/ or queries/.
 """
 
-from app.combinations.commands import (
+from app.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchInput,
+    CombinationsUseCases,
 )
-from app.composition import (
-    build_combinations_commands,
-    build_combinations_queries,
-    build_tables_queries,
-)
-from app.shared.execution import run_command, run_query
 from app.shared.pagination import PageRequest
+from app.tables.use_cases import TablesUseCases
 from tests.helpers import build_standard_table, generate_and_wait
 
 
@@ -29,21 +25,15 @@ async def test_full_decision_table_lifecycle(database):
         fixture["login_values"][1],
     )
 
-    table = await run_query(
-        database,
-        lambda scope: build_tables_queries(scope).get_decision_table(table_id=table_id),
-    )
+    table = await TablesUseCases(database).get_decision_table(table_id=table_id)
     assert len(table.factors) == 3
 
     job = await generate_and_wait(database, table_id, batch_size=5)
     assert job.status == "completed"
     assert job.created_count == 18
 
-    page = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).list_combinations(
-            table_id=table_id, page=PageRequest(limit=100)
-        ),
+    page = await CombinationsUseCases(database).list_combinations(
+        table_id=table_id, page=PageRequest(limit=100)
     )
     assert page.total == 18
     target = next(
@@ -52,53 +42,41 @@ async def test_full_decision_table_lifecycle(database):
         if {(v.factor_id, v.factor_value_id) for v in c.values}
         == {(browser_id, chrome_id), (os_id, windows_id), (login_id, login_in_id)}
     )
-    await run_command(
-        database,
-        lambda uow: build_combinations_commands(uow).patch_combination(
-            table_id=table_id,
-            combination_id=target.id,
-            status="possible",
-            output="user reaches dashboard",
-            output_set=True,
-        ),
+    await CombinationsUseCases(database).patch_combination(
+        table_id=table_id,
+        combination_id=target.id,
+        status="possible",
+        output="user reaches dashboard",
+        output_set=True,
     )
 
-    bulk_result = await run_command(
-        database,
-        lambda uow: build_combinations_commands(uow).bulk_patch_combinations(
-            table_id=table_id,
-            filter=BulkFilterInput(factor_values=((login_id, login_out_id),)),
-            patch=BulkPatchInput(
-                status="impossible",
-                impossible_reason="N/A when logged out",
-                impossible_reason_set=True,
-            ),
+    bulk_result = await CombinationsUseCases(database).bulk_patch_combinations(
+        table_id=table_id,
+        filter=BulkFilterInput(factor_values=((login_id, login_out_id),)),
+        patch=BulkPatchInput(
+            status="impossible",
+            impossible_reason="N/A when logged out",
+            impossible_reason_set=True,
         ),
     )
     assert bulk_result.updated_count == 9
 
-    full = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id,
-            assignment=(
-                (browser_id, chrome_id),
-                (os_id, windows_id),
-                (login_id, login_in_id),
-            ),
+    full = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id,
+        assignment=(
+            (browser_id, chrome_id),
+            (os_id, windows_id),
+            (login_id, login_in_id),
         ),
     )
     assert full.kind == "single"
     assert full.combination.status == "possible"
     assert full.combination.output == "user reaches dashboard"
 
-    partial = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id,
-            assignment=((login_id, login_out_id),),
-            page=PageRequest(limit=100),
-        ),
+    partial = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id,
+        assignment=((login_id, login_out_id),),
+        page=PageRequest(limit=100),
     )
     assert partial.kind == "list"
     assert partial.page.total == 9

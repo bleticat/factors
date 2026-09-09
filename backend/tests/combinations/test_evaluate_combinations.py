@@ -1,8 +1,7 @@
 import pytest
 
-from app.composition import build_combinations_commands, build_combinations_queries
+from app.combinations.use_cases import CombinationsUseCases
 from app.shared.errors import DuplicateFactorInAssignmentError
-from app.shared.execution import run_command, run_query
 from app.shared.pagination import PageRequest
 from app.tables.errors import (
     UnknownFactorInFilterError,
@@ -26,11 +25,8 @@ async def test_full_assignment_returns_exactly_one_match_with_its_current_state(
     await generate_and_wait(database, table_id)
 
     # Mark the target row so we can confirm evaluate reflects live state.
-    page = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).list_combinations(
-            table_id=table_id, page=PageRequest(limit=100)
-        ),
+    page = await CombinationsUseCases(database).list_combinations(
+        table_id=table_id, page=PageRequest(limit=100)
     )
     target = next(
         c
@@ -38,26 +34,20 @@ async def test_full_assignment_returns_exactly_one_match_with_its_current_state(
         if {(v.factor_id, v.factor_value_id) for v in c.values}
         == {(browser_id, chrome_id), (os_id, windows_id), (login_id, login_in_id)}
     )
-    await run_command(
-        database,
-        lambda uow: build_combinations_commands(uow).patch_combination(
-            table_id=table_id,
-            combination_id=target.id,
-            status="possible",
-            output="ok",
-            output_set=True,
-        ),
+    await CombinationsUseCases(database).patch_combination(
+        table_id=table_id,
+        combination_id=target.id,
+        status="possible",
+        output="ok",
+        output_set=True,
     )
 
-    result = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id,
-            assignment=(
-                (browser_id, chrome_id),
-                (os_id, windows_id),
-                (login_id, login_in_id),
-            ),
+    result = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id,
+        assignment=(
+            (browser_id, chrome_id),
+            (os_id, windows_id),
+            (login_id, login_in_id),
         ),
     )
     assert result.kind == "single"
@@ -73,13 +63,10 @@ async def test_partial_assignment_returns_consistent_subset(database):
     login_id, login_out_id = fixture["login_id"], fixture["login_values"][1]
     await generate_and_wait(database, table_id)
 
-    result = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id,
-            assignment=((login_id, login_out_id),),
-            page=PageRequest(limit=100),
-        ),
+    result = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id,
+        assignment=((login_id, login_out_id),),
+        page=PageRequest(limit=100),
     )
     assert result.kind == "list"
     assert result.page is not None
@@ -91,11 +78,8 @@ async def test_empty_assignment_returns_every_combination(database):
     table_id = fixture["table_id"]
     await generate_and_wait(database, table_id)
 
-    result = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id, assignment=(), page=PageRequest(limit=100)
-        ),
+    result = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id, assignment=(), page=PageRequest(limit=100)
     )
     assert result.kind == "list"
     assert result.page.total == 18
@@ -109,15 +93,12 @@ async def test_full_assignment_against_ungenerated_table_returns_none(database):
     login_id, login_in_id = fixture["login_id"], fixture["login_values"][0]
     # Note: generation never run.
 
-    result = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id,
-            assignment=(
-                (browser_id, chrome_id),
-                (os_id, windows_id),
-                (login_id, login_in_id),
-            ),
+    result = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id,
+        assignment=(
+            (browser_id, chrome_id),
+            (os_id, windows_id),
+            (login_id, login_in_id),
         ),
     )
     assert result.kind == "single"
@@ -133,11 +114,8 @@ async def test_single_factor_table_full_assignment_is_one_pair(database):
     )
     await generate_and_wait(database, table_id)
 
-    result = await run_query(
-        database,
-        lambda scope: build_combinations_queries(scope).evaluate_combinations(
-            table_id=table_id, assignment=((factor_id, value_ids[0]),)
-        ),
+    result = await CombinationsUseCases(database).evaluate_combinations(
+        table_id=table_id, assignment=((factor_id, value_ids[0]),)
     )
     assert result.kind == "single"
     assert result.combination is not None
@@ -149,11 +127,8 @@ async def test_assignment_pair_with_unknown_factor_is_rejected(database):
     await generate_and_wait(database, table_id)
 
     with pytest.raises(UnknownFactorInFilterError):
-        await run_query(
-            database,
-            lambda scope: build_combinations_queries(scope).evaluate_combinations(
-                table_id=table_id, assignment=((999, 1),)
-            ),
+        await CombinationsUseCases(database).evaluate_combinations(
+            table_id=table_id, assignment=((999, 1),)
         )
 
 
@@ -165,11 +140,8 @@ async def test_assignment_pair_with_value_not_belonging_to_factor_is_rejected(da
     await generate_and_wait(database, table_id)
 
     with pytest.raises(UnknownFactorValueInFilterError):
-        await run_query(
-            database,
-            lambda scope: build_combinations_queries(scope).evaluate_combinations(
-                table_id=table_id, assignment=((browser_id, os_value_id),)
-            ),
+        await CombinationsUseCases(database).evaluate_combinations(
+            table_id=table_id, assignment=((browser_id, os_value_id),)
         )
 
 
@@ -181,10 +153,7 @@ async def test_assignment_with_duplicate_factor_is_rejected(database):
     await generate_and_wait(database, table_id)
 
     with pytest.raises(DuplicateFactorInAssignmentError):
-        await run_query(
-            database,
-            lambda scope: build_combinations_queries(scope).evaluate_combinations(
-                table_id=table_id,
-                assignment=((browser_id, chrome_id), (browser_id, firefox_id)),
-            ),
+        await CombinationsUseCases(database).evaluate_combinations(
+            table_id=table_id,
+            assignment=((browser_id, chrome_id), (browser_id, firefox_id)),
         )

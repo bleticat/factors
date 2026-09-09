@@ -67,3 +67,4 @@ Read-after-write behavior needs explicit care if optimized read models or replic
 - Depends on: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Constrained by: [003. Project Structure](./003-project-structure.md)
 - Used by: [005. Tests Structure](./005-tests-structure.md)
+- Refined by: [007. Database Holds Repositories and Queries](./007-database-holds-repositories-and-queries.md)
