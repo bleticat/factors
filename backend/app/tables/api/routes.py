@@ -6,8 +6,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.shared.api import get_database
-from app.shared.database.port import Database
 from app.shared.pagination import PageRequest
+from app.shared.ports.database import Database
 from app.tables.api import schemas
 from app.tables.use_cases import TablesUseCases
 

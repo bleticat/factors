@@ -23,7 +23,7 @@ from app.generation.errors import (
 )
 from app.generation.ports.generation_job_queries import GenerationJobDTO
 from app.generation.service import GenerationJobRef, to_ref
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 from app.tables.errors import DecisionTableNotFoundError
 
 

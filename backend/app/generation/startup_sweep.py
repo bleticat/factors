@@ -7,7 +7,7 @@ abandoned by the previous process and is swept to `failed` (spec 002)."""
 from __future__ import annotations
 
 from app.generation.use_cases import GenerationUseCases
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 
 INTERRUPTED_MESSAGE = "Interrupted by server restart"
 

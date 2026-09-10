@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.database.orm_base import Base
+from app.shared.adapters.orm_base import Base
 
 
 class RuleRow(Base):

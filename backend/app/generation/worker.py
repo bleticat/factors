@@ -13,7 +13,7 @@ import logging
 from app.generation.entities import TERMINAL_STATUSES, GenerationJobStatus
 from app.generation.use_cases import GenerationUseCases
 from app.rules.use_cases import RulesUseCases
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 
 logger = logging.getLogger(__name__)
 

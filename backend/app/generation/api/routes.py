@@ -11,7 +11,7 @@ from app.config import settings
 from app.generation.use_cases import GenerationUseCases
 from app.generation.worker import run_generation_job
 from app.shared.api import get_database
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 from app.generation.entities import TERMINAL_STATUSES
 from app.generation.service import GenerationJobRef
 from app.generation.use_cases import GenerationUseCases
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 from app.tables.use_cases import TablesUseCases
 
 _TERMINAL_STATUS_VALUES = {str(status) for status in TERMINAL_STATUSES}

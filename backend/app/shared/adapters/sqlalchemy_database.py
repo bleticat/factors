@@ -1,7 +1,7 @@
 """SQLAlchemy async implementation of the `Database` port — the sole place
-that wires every module's concrete repository/query adapters together
+that wires every module's concrete read-side query adapters together
 (absorbing what a separate composition-root file used to do; see
-`app/shared/database/port.py`'s docstring for why that's an acknowledged
+`app/shared/ports/database.py`'s docstring for why that's an acknowledged
 exception to ADR 003's shared/-stays-generic rule rather than a leak).
 """
 
@@ -21,37 +21,16 @@ from sqlalchemy.ext.asyncio import (
 from app.combinations.adapters.sqlalchemy_combination_queries import (
     SqlAlchemyCombinationQueries,
 )
-from app.combinations.adapters.sqlalchemy_combination_repository import (
-    SqlAlchemyCombinationRepository,
-)
 from app.generation.adapters.sqlalchemy_generation_job_queries import (
     SqlAlchemyGenerationJobQueries,
 )
-from app.generation.adapters.sqlalchemy_generation_job_repository import (
-    SqlAlchemyGenerationJobRepository,
-)
 from app.rules.adapters.sqlalchemy_rule_queries import SqlAlchemyRuleQueries
-from app.rules.adapters.sqlalchemy_rule_repository import SqlAlchemyRuleRepository
-from app.shared.database.port import Database, UnitOfWork
+from app.shared.adapters.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
+from app.shared.ports.database import Database
+from app.shared.ports.unit_of_work import UnitOfWork
 from app.tables.adapters.sqlalchemy_decision_table_queries import (
     SqlAlchemyDecisionTableQueries,
 )
-from app.tables.adapters.sqlalchemy_decision_table_repository import (
-    SqlAlchemyDecisionTableRepository,
-)
-
-
-class SqlAlchemyUnitOfWork(UnitOfWork):
-    """One open transaction's repositories, all bound to the same
-    `AsyncSession` — so cross-module writes inside one use-case method
-    (e.g. `TablesUseCases.delete_factor` cascading into `combinations`/
-    `rules`) share that one transaction automatically."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.tables = SqlAlchemyDecisionTableRepository(session)
-        self.jobs = SqlAlchemyGenerationJobRepository(session)
-        self.combinations = SqlAlchemyCombinationRepository(session)
-        self.rules = SqlAlchemyRuleRepository(session)
 
 
 def create_engine(database_url: str) -> AsyncEngine:

@@ -13,9 +13,9 @@ from app.combinations.ports.combination_repository import (
     FactorValueAssignment,
 )
 from app.combinations.service import validate_factor_value_pairs
-from app.shared.database.port import Database
 from app.shared.errors import DuplicateFactorInAssignmentError
 from app.shared.pagination import Page, PageRequest
+from app.shared.ports.database import Database
 from app.tables.errors import DecisionTableNotFoundError
 
 

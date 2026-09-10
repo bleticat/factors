@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends
 from app.rules.api import schemas
 from app.rules.use_cases import RulesUseCases
 from app.shared.api import get_database
-from app.shared.database.port import Database
 from app.shared.pagination import PageRequest
+from app.shared.ports.database import Database
 
 router = APIRouter()
 

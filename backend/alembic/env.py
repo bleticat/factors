@@ -14,7 +14,7 @@ from app.combinations.adapters import orm as combinations_orm  # noqa: F401
 from app.config import settings
 from app.generation.adapters import orm as generation_orm  # noqa: F401
 from app.rules.adapters import orm as rules_orm  # noqa: F401
-from app.shared.database.orm_base import Base
+from app.shared.adapters.orm_base import Base
 from app.tables.adapters import orm as tables_orm  # noqa: F401
 
 # this is the Alembic Config object, which provides

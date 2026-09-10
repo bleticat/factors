@@ -13,7 +13,7 @@ from app.config import settings
 from app.generation.api.routes import router as generation_router
 from app.generation.startup_sweep import sweep_stale_generation_jobs
 from app.rules.api.routes import router as rules_router
-from app.shared.database.sqlalchemy_database import SqlAlchemyDatabase, create_engine
+from app.shared.adapters.sqlalchemy_database import SqlAlchemyDatabase, create_engine
 from app.shared.errors import NotFoundError, ValidationError
 from app.tables.api.routes import router as tables_router
 

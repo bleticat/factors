@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.shared.database.port import Database
 from app.shared.errors import EmptyNameError
 from app.shared.pagination import Page, PageRequest
+from app.shared.ports.database import Database
 from app.tables.entities import DecisionTable
 from app.tables.errors import (
     DecisionTableNotFoundError,

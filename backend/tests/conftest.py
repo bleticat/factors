@@ -18,7 +18,7 @@ import pytest
 from alembic.config import Config
 
 from alembic import command
-from app.shared.database.sqlalchemy_database import SqlAlchemyDatabase, create_engine
+from app.shared.adapters.sqlalchemy_database import SqlAlchemyDatabase, create_engine
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 

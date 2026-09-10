@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import Request
 
-from app.shared.database.port import Database
+from app.shared.ports.database import Database
 
 
 def get_database(request: Request) -> Database:

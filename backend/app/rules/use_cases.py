@@ -15,9 +15,9 @@ from app.rules.entities import Rule, RuleAssignment
 from app.rules.errors import InvalidRuleOrderError, RuleNotFoundError
 from app.rules.ports.rule_queries import RuleDTO
 from app.rules.service import RuleApplyRef, apply_rule
-from app.shared.database.port import Database
 from app.shared.errors import DuplicateFactorInAssignmentError, EmptyNameError
 from app.shared.pagination import Page, PageRequest
+from app.shared.ports.database import Database
 from app.tables.errors import DecisionTableNotFoundError
 
 
