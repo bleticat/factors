@@ -18,13 +18,12 @@ from app.generation.errors import (
     CombinationCapExceededError,
     FactorHasNoValuesError,
     GenerationAlreadyInProgressError,
-    GenerationJobNotFoundError,
     NoFactorsError,
 )
 from app.generation.ports.generation_job_queries import GenerationJobDTO
 from app.generation.service import GenerationJobRef, to_ref
+from app.shared.errors import NotFoundError
 from app.shared.ports.database import Database
-from app.tables.errors import DecisionTableNotFoundError
 
 
 class GenerationUseCases:
@@ -42,7 +41,7 @@ class GenerationUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             if not table.factors:
                 raise NoFactorsError(table_id)
             for factor in table.factors:
@@ -72,7 +71,7 @@ class GenerationUseCases:
         async with self._database.unit_of_work() as uow:
             job = await uow.jobs.get(job_id)
             if job is None:
-                raise GenerationJobNotFoundError(job_id)
+                raise NotFoundError(f"Generation job {job_id} not found")
             job.cancel()  # raises InvalidGenerationJobTransitionError if already terminal
             await uow.jobs.save(job)
             return to_ref(job)
@@ -83,7 +82,7 @@ class GenerationUseCases:
         async with self._database.unit_of_work() as uow:
             job = await uow.jobs.get(job_id)
             if job is None:
-                raise GenerationJobNotFoundError(job_id)
+                raise NotFoundError(f"Generation job {job_id} not found")
             job.fail(error_message)
             await uow.jobs.save(job)
             return to_ref(job)
@@ -114,7 +113,7 @@ class GenerationUseCases:
             # concurrent cancel (see spec 002).
             job = await uow.jobs.get_for_update(job_id)
             if job is None:
-                raise GenerationJobNotFoundError(job_id)
+                raise NotFoundError(f"Generation job {job_id} not found")
 
             if job.status in TERMINAL_STATUSES:
                 # Idempotent no-op: already completed/failed/cancelled.
@@ -124,7 +123,7 @@ class GenerationUseCases:
 
             table = await uow.tables.get(job.decision_table_id)
             if table is None:
-                raise DecisionTableNotFoundError(job.decision_table_id)
+                raise NotFoundError(f"Decision table {job.decision_table_id} not found")
 
             ordered_factors = table.ordered_factors()
             value_counts = [len(f.values) for f in ordered_factors]
@@ -175,7 +174,7 @@ class GenerationUseCases:
     async def get_generation_job(self, job_id: int) -> GenerationJobDTO:
         job = await self._database.jobs_queries.get(job_id)
         if job is None:
-            raise GenerationJobNotFoundError(job_id)
+            raise NotFoundError(f"Generation job {job_id} not found")
         return job
 
     async def list_stale_running_generation_jobs(self) -> list[int]:

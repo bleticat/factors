@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from app.shared.errors import NotFoundError, ValidationError
-
-
-class RuleNotFoundError(NotFoundError):
-    def __init__(self, rule_id: int) -> None:
-        super().__init__(f"Rule {rule_id} not found")
-        self.rule_id = rule_id
+from app.shared.errors import ValidationError
 
 
 class InvalidRuleOrderError(ValidationError):

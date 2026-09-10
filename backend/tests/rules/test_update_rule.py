@@ -1,9 +1,8 @@
 import pytest
 
 from app.combinations.use_cases import CombinationsUseCases
-from app.rules.errors import RuleNotFoundError
 from app.rules.use_cases import RulesUseCases
-from app.shared.errors import EmptyNameError
+from app.shared.errors import EmptyNameError, NotFoundError
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
@@ -149,7 +148,7 @@ async def test_update_rule_for_other_table_raises_not_found(database):
         table_id=fixture_a["table_id"], output="x"
     )
 
-    with pytest.raises(RuleNotFoundError):
+    with pytest.raises(NotFoundError):
         await RulesUseCases(database).update_rule(
             table_id=fixture_b["table_id"], rule_id=rule.id, output="y"
         )

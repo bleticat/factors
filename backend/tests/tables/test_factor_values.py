@@ -1,7 +1,7 @@
 import pytest
 
-from app.shared.errors import EmptyNameError
-from app.tables.errors import DuplicateFactorValueError, FactorValueNotFoundError
+from app.shared.errors import EmptyNameError, NotFoundError
+from app.tables.errors import DuplicateFactorValueError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
 
@@ -87,7 +87,7 @@ async def test_delete_factor_value_leaves_remaining_values_order_index_untouched
 async def test_delete_factor_value_against_missing_value_raises(database):
     table_id = await create_table(database)
     factor_id = await _make_factor(database, table_id)
-    with pytest.raises(FactorValueNotFoundError):
+    with pytest.raises(NotFoundError):
         await TablesUseCases(database).delete_factor_value(
             table_id=table_id, factor_id=factor_id, value_id=999
         )

@@ -12,16 +12,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.shared.errors import EmptyNameError
+from app.shared.errors import EmptyNameError, NotFoundError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 from app.tables.entities import DecisionTable
 from app.tables.errors import (
-    DecisionTableNotFoundError,
     DuplicateFactorNameError,
     DuplicateFactorValueError,
-    FactorNotFoundError,
-    FactorValueNotFoundError,
 )
 from app.tables.ports.decision_table_queries import (
     DecisionTableDTO,
@@ -95,7 +92,7 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
 
             if name is not None:
                 if not name.strip():
@@ -119,7 +116,7 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             factor = table.add_factor(name)
@@ -139,10 +136,10 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             factor = table.get_factor(factor_id)
             if factor is None:
-                raise FactorNotFoundError(factor_id)
+                raise NotFoundError(f"Factor {factor_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             if name is not None:
@@ -163,10 +160,10 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             factor = table.get_factor(factor_id)
             if factor is None:
-                raise FactorNotFoundError(factor_id)
+                raise NotFoundError(f"Factor {factor_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             table.factors = [f for f in table.factors if f.id != factor.id]
@@ -187,10 +184,10 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             factor = table.get_factor(factor_id)
             if factor is None:
-                raise FactorNotFoundError(factor_id)
+                raise NotFoundError(f"Factor {factor_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             added = factor.add_value(value)
@@ -211,13 +208,13 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             factor = table.get_factor(factor_id)
             if factor is None:
-                raise FactorNotFoundError(factor_id)
+                raise NotFoundError(f"Factor {factor_id} not found")
             existing = factor.get_value(value_id)
             if existing is None:
-                raise FactorValueNotFoundError(value_id)
+                raise NotFoundError(f"Factor value {value_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             if value is not None:
@@ -240,13 +237,13 @@ class TablesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             factor = table.get_factor(factor_id)
             if factor is None:
-                raise FactorNotFoundError(factor_id)
+                raise NotFoundError(f"Factor {factor_id} not found")
             value = factor.get_value(value_id)
             if value is None:
-                raise FactorValueNotFoundError(value_id)
+                raise NotFoundError(f"Factor value {value_id} not found")
             await ensure_not_generating(uow.jobs, table_id)
 
             factor.values = [v for v in factor.values if v.id != value.id]
@@ -263,7 +260,7 @@ class TablesUseCases:
     async def get_decision_table(self, table_id: int) -> DecisionTableDTO:
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
         return table
 
     async def list_decision_tables(
@@ -274,5 +271,5 @@ class TablesUseCases:
     async def list_factors(self, table_id: int) -> list[FactorDTO]:
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
         return table.factors
