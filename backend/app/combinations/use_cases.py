@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.combinations.entities import parse_status
-from app.combinations.errors import CombinationNotFoundError
 from app.combinations.ports.combination_queries import CombinationDTO
 from app.combinations.ports.combination_repository import (
     CombinationFilter,
@@ -13,10 +12,9 @@ from app.combinations.ports.combination_repository import (
     FactorValueAssignment,
 )
 from app.combinations.service import validate_factor_value_pairs
-from app.shared.errors import DuplicateFactorInAssignmentError
+from app.shared.errors import DuplicateFactorInAssignmentError, NotFoundError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
-from app.tables.errors import DecisionTableNotFoundError
 
 
 @dataclass(frozen=True)
@@ -81,7 +79,7 @@ class CombinationsUseCases:
         async with self._database.unit_of_work() as uow:
             combination = await uow.combinations.get(table_id, combination_id)
             if combination is None:
-                raise CombinationNotFoundError(combination_id)
+                raise NotFoundError(f"Combination {combination_id} not found")
 
             if status is not None:
                 combination.status = parse_status(status)
@@ -108,7 +106,7 @@ class CombinationsUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             table.validate_factor_value_pairs(list(filter.factor_values))
 
             filter_ = CombinationFilter(
@@ -146,7 +144,7 @@ class CombinationsUseCases:
     ) -> Page[CombinationDTO]:
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
         validate_factor_value_pairs(table, list(factor_values))
 
         filter_ = CombinationFilter(
@@ -168,7 +166,7 @@ class CombinationsUseCases:
     ) -> EvaluateResult:
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
 
         factor_ids = [factor_id for factor_id, _ in assignment]
         seen: set[int] = set()

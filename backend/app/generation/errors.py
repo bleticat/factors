@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from app.shared.errors import NotFoundError, ValidationError
-
-
-class GenerationJobNotFoundError(NotFoundError):
-    def __init__(self, job_id: int) -> None:
-        super().__init__(f"Generation job {job_id} not found")
-        self.job_id = job_id
+from app.shared.errors import ValidationError
 
 
 class GenerationInProgressError(ValidationError):

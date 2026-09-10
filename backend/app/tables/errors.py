@@ -1,24 +1,6 @@
 from __future__ import annotations
 
-from app.shared.errors import NotFoundError, ValidationError
-
-
-class DecisionTableNotFoundError(NotFoundError):
-    def __init__(self, table_id: int) -> None:
-        super().__init__(f"Decision table {table_id} not found")
-        self.table_id = table_id
-
-
-class FactorNotFoundError(NotFoundError):
-    def __init__(self, factor_id: int) -> None:
-        super().__init__(f"Factor {factor_id} not found")
-        self.factor_id = factor_id
-
-
-class FactorValueNotFoundError(NotFoundError):
-    def __init__(self, value_id: int) -> None:
-        super().__init__(f"Factor value {value_id} not found")
-        self.value_id = value_id
+from app.shared.errors import ValidationError
 
 
 class DuplicateFactorNameError(ValidationError):

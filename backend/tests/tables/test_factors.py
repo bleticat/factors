@@ -1,11 +1,7 @@
 import pytest
 
-from app.shared.errors import EmptyNameError
-from app.tables.errors import (
-    DecisionTableNotFoundError,
-    DuplicateFactorNameError,
-    FactorNotFoundError,
-)
+from app.shared.errors import EmptyNameError, NotFoundError
+from app.tables.errors import DuplicateFactorNameError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
 
@@ -44,7 +40,7 @@ async def test_add_factor_allows_same_name_in_different_table(database):
 
 
 async def test_add_factor_against_missing_table_raises(database):
-    with pytest.raises(DecisionTableNotFoundError):
+    with pytest.raises(NotFoundError):
         await TablesUseCases(database).add_factor(table_id=999, name="Browser")
 
 
@@ -66,7 +62,7 @@ async def test_update_factor_against_factor_in_different_table_raises_not_found(
     table_a = await create_table(database, name="A")
     table_b = await create_table(database, name="B")
     factor = await TablesUseCases(database).add_factor(table_id=table_a, name="Browser")
-    with pytest.raises(FactorNotFoundError):
+    with pytest.raises(NotFoundError):
         await TablesUseCases(database).update_factor(
             table_id=table_b, factor_id=factor.id, name="X"
         )

@@ -5,10 +5,13 @@ from app.combinations.use_cases import (
     BulkPatchInput,
     CombinationsUseCases,
 )
-from app.rules.errors import RuleNotFoundError
 from app.rules.ports.rule_queries import RuleValueDTO
 from app.rules.use_cases import RulesUseCases
-from app.shared.errors import DuplicateFactorInAssignmentError, EmptyNameError
+from app.shared.errors import (
+    DuplicateFactorInAssignmentError,
+    EmptyNameError,
+    NotFoundError,
+)
 from app.shared.pagination import PageRequest
 from app.tables.errors import (
     UnknownFactorInFilterError,
@@ -430,7 +433,7 @@ async def test_delete_rule_for_other_table_raises_not_found(database):
         table_id=fixture_a["table_id"], output="x"
     )
 
-    with pytest.raises(RuleNotFoundError):
+    with pytest.raises(NotFoundError):
         await RulesUseCases(database).delete_rule(
             table_id=fixture_b["table_id"], rule_id=rule.id
         )

@@ -3,8 +3,8 @@ import pytest
 from app.combinations.use_cases import CombinationsUseCases
 from app.rules.errors import InvalidRuleOrderError
 from app.rules.use_cases import RulesUseCases
+from app.shared.errors import NotFoundError
 from app.shared.pagination import PageRequest
-from app.tables.errors import DecisionTableNotFoundError
 from tests.helpers import build_standard_table, generate_and_wait
 
 
@@ -138,5 +138,5 @@ async def test_reorder_allows_an_order_that_shadows_a_rule(database):
 
 
 async def test_reorder_for_missing_table_raises_not_found(database):
-    with pytest.raises(DecisionTableNotFoundError):
+    with pytest.raises(NotFoundError):
         await RulesUseCases(database).reorder_rules(table_id=999, ordered_rule_ids=())

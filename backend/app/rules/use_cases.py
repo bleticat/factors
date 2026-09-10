@@ -12,13 +12,16 @@ from app.combinations.ports.combination_queries import (
 )
 from app.combinations.ports.combination_repository import FactorValueAssignment
 from app.rules.entities import Rule, RuleAssignment
-from app.rules.errors import InvalidRuleOrderError, RuleNotFoundError
+from app.rules.errors import InvalidRuleOrderError
 from app.rules.ports.rule_queries import RuleDTO
 from app.rules.service import RuleApplyRef, apply_rule
-from app.shared.errors import DuplicateFactorInAssignmentError, EmptyNameError
+from app.shared.errors import (
+    DuplicateFactorInAssignmentError,
+    EmptyNameError,
+    NotFoundError,
+)
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
-from app.tables.errors import DecisionTableNotFoundError
 
 
 @dataclass(frozen=True)
@@ -52,7 +55,7 @@ class RulesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             if not output.strip():
                 raise EmptyNameError("output")
 
@@ -110,10 +113,10 @@ class RulesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
             rule = await uow.rules.get(table_id, rule_id)
             if rule is None:
-                raise RuleNotFoundError(rule_id)
+                raise NotFoundError(f"Rule {rule_id} not found")
 
             if output is not None:
                 if not output.strip():
@@ -154,7 +157,7 @@ class RulesUseCases:
             # combinations untouched — see spec 005's "no revert on delete".
             deleted = await uow.rules.delete(table_id, rule_id)
             if not deleted:
-                raise RuleNotFoundError(rule_id)
+                raise NotFoundError(f"Rule {rule_id} not found")
 
     async def reorder_rules(
         self, table_id: int, ordered_rule_ids: tuple[int, ...] = ()
@@ -169,7 +172,7 @@ class RulesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
 
             existing = await uow.rules.list_for_table(table_id)
             requested_ids = list(ordered_rule_ids)
@@ -200,7 +203,7 @@ class RulesUseCases:
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
-                raise DecisionTableNotFoundError(table_id)
+                raise NotFoundError(f"Decision table {table_id} not found")
 
             rules = await uow.rules.list_for_table(table_id)
             results = [
@@ -215,7 +218,7 @@ class RulesUseCases:
     ) -> Page[RuleDTO]:
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
 
         result = await self._database.rules_queries.list_for_table(table_id, page)
         if not result.items:
@@ -265,7 +268,7 @@ class RulesUseCases:
         currently wins a reapply."""
         table = await self._database.tables_queries.get(table_id)
         if table is None:
-            raise DecisionTableNotFoundError(table_id)
+            raise NotFoundError(f"Decision table {table_id} not found")
 
         rules = await self._database.rules_queries.list_all_for_table(table_id)
         rule_inputs = [

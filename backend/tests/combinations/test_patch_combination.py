@@ -1,10 +1,8 @@
 import pytest
 
-from app.combinations.errors import (
-    CombinationNotFoundError,
-    InvalidCombinationStatusError,
-)
+from app.combinations.errors import InvalidCombinationStatusError
 from app.combinations.use_cases import CombinationsUseCases
+from app.shared.errors import NotFoundError
 from tests.helpers import build_standard_table, generate_and_wait
 
 
@@ -67,7 +65,7 @@ async def test_patch_combination_from_a_different_table_raises_not_found(databas
     await generate_and_wait(database, fixture_b["table_id"])
     combination_from_a = await _first_combination_id(database, fixture_a["table_id"])
 
-    with pytest.raises(CombinationNotFoundError):
+    with pytest.raises(NotFoundError):
         await CombinationsUseCases(database).patch_combination(
             table_id=fixture_b["table_id"],
             combination_id=combination_from_a,

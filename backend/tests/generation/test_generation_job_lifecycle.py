@@ -1,10 +1,8 @@
 import pytest
 
-from app.generation.errors import (
-    GenerationJobNotFoundError,
-    InvalidGenerationJobTransitionError,
-)
+from app.generation.errors import InvalidGenerationJobTransitionError
 from app.generation.use_cases import GenerationUseCases
+from app.shared.errors import NotFoundError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,
@@ -73,7 +71,7 @@ async def test_mark_generation_job_failed_records_error_message(database):
 
 
 async def test_mark_generation_job_failed_against_missing_job_raises(database):
-    with pytest.raises(GenerationJobNotFoundError):
+    with pytest.raises(NotFoundError):
         await GenerationUseCases(database).mark_generation_job_failed(
             job_id=999, error_message="x"
         )

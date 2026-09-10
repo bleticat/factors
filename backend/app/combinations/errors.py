@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from app.shared.errors import NotFoundError, ValidationError
-
-
-class CombinationNotFoundError(NotFoundError):
-    def __init__(self, combination_id: int) -> None:
-        super().__init__(f"Combination {combination_id} not found")
-        self.combination_id = combination_id
+from app.shared.errors import ValidationError
 
 
 class InvalidCombinationStatusError(ValidationError):
