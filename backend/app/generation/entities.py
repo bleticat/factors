@@ -36,16 +36,25 @@ class GenerationJob:
     finished_at: datetime | None = None
 
     def is_active(self) -> bool:
+        """Return whether this job is still pending or running."""
         return self.status in ACTIVE_STATUSES
 
     def is_done(self) -> bool:
+        """Return whether this job has reached a terminal status."""
         return self.status in TERMINAL_STATUSES
 
     def start(self) -> None:
+        """Transition a pending job to running. A no-op if already running."""
         if self.status == GenerationJobStatus.PENDING:
             self.status = GenerationJobStatus.RUNNING
 
     def record_batch(self, new_cursor: int, rows_created: int) -> None:
+        """Advance the job's cursor/created_count after a batch is inserted,
+        completing the job once the cursor reaches `total_combinations`.
+
+        Raises:
+            InvalidGenerationJobTransitionError: if the job isn't `running`.
+        """
         if self.status != GenerationJobStatus.RUNNING:
             raise InvalidGenerationJobTransitionError(
                 self.id or 0, str(self.status), "batch-progress"
@@ -56,10 +65,17 @@ class GenerationJob:
             self.status = GenerationJobStatus.COMPLETED
 
     def fail(self, error_message: str) -> None:
+        """Mark the job failed with `error_message`."""
         self.status = GenerationJobStatus.FAILED
         self.error_message = error_message
 
     def cancel(self) -> None:
+        """Cancel the job.
+
+        Raises:
+            InvalidGenerationJobTransitionError: if the job isn't active
+                (already terminal).
+        """
         if not self.is_active():
             raise InvalidGenerationJobTransitionError(
                 self.id or 0, str(self.status), str(GenerationJobStatus.CANCELLED)

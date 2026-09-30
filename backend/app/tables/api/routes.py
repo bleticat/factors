@@ -15,6 +15,7 @@ router = APIRouter()
 
 
 def get_tables_use_cases(database: Database = Depends(get_database)) -> TablesUseCases:
+    """FastAPI dependency: build a `TablesUseCases` for the current request."""
     return TablesUseCases(database)
 
 
@@ -23,6 +24,7 @@ async def create_decision_table(
     body: schemas.CreateDecisionTableRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Create a new decision table."""
     return await use_cases.create_decision_table(body.name, body.description)
 
 
@@ -32,6 +34,7 @@ async def list_decision_tables(
     offset: int = 0,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """List decision table summaries, most recently created first."""
     return await use_cases.list_decision_tables(PageRequest(limit=limit, offset=offset))
 
 
@@ -39,6 +42,7 @@ async def list_decision_tables(
 async def get_decision_table(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ):
+    """Get a decision table with its factors and values."""
     return await use_cases.get_decision_table(table_id)
 
 
@@ -48,6 +52,7 @@ async def update_decision_table(
     body: schemas.UpdateDecisionTableRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Update a decision table's name and/or description."""
     fields = body.model_fields_set
     return await use_cases.update_decision_table(
         table_id=table_id,
@@ -61,6 +66,7 @@ async def update_decision_table(
 async def delete_decision_table(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ) -> None:
+    """Delete a decision table."""
     await use_cases.delete_decision_table(table_id)
 
 
@@ -70,6 +76,7 @@ async def add_factor(
     body: schemas.AddFactorRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Add a new factor to a decision table."""
     return await use_cases.add_factor(table_id, body.name)
 
 
@@ -77,6 +84,7 @@ async def add_factor(
 async def list_factors(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ):
+    """List a decision table's factors and their values."""
     return await use_cases.list_factors(table_id)
 
 
@@ -87,6 +95,7 @@ async def update_factor(
     body: schemas.UpdateFactorRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Update a factor's name and/or order index."""
     return await use_cases.update_factor(
         table_id=table_id,
         factor_id=factor_id,
@@ -101,6 +110,7 @@ async def delete_factor(
     factor_id: int,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ) -> None:
+    """Delete a factor, cascading to every combination and rule for its table."""
     await use_cases.delete_factor(table_id, factor_id)
 
 
@@ -111,6 +121,7 @@ async def add_factor_value(
     body: schemas.AddFactorValueRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Add a new value to a factor."""
     return await use_cases.add_factor_value(table_id, factor_id, body.value)
 
 
@@ -122,6 +133,7 @@ async def update_factor_value(
     body: schemas.UpdateFactorValueRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
+    """Update a factor value's value and/or order index."""
     return await use_cases.update_factor_value(
         table_id=table_id,
         factor_id=factor_id,
@@ -138,4 +150,5 @@ async def delete_factor_value(
     value_id: int,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ) -> None:
+    """Delete a factor value, cascading to every combination and rule for its table."""
     await use_cases.delete_factor_value(table_id, factor_id, value_id)

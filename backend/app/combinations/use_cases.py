@@ -76,6 +76,15 @@ class CombinationsUseCases:
         impossible_reason: str | None = None,
         impossible_reason_set: bool = False,
     ) -> CombinationRef:
+        """Update a single combination's status, output, and/or impossible reason.
+
+        `output`/`impossible_reason` are only applied when their `_set` flag
+        is True, so a caller can distinguish "leave alone" from "clear it".
+
+        Raises:
+            NotFoundError: if `table_id`/`combination_id` doesn't exist.
+            InvalidCombinationStatusError: if `status` isn't a valid status.
+        """
         async with self._database.unit_of_work() as uow:
             combination = await uow.combinations.get(table_id, combination_id)
             if combination is None:
@@ -103,6 +112,17 @@ class CombinationsUseCases:
         filter: BulkFilterInput = BulkFilterInput(),
         patch: BulkPatchInput = BulkPatchInput(),
     ) -> BulkPatchResult:
+        """Apply `patch` to every combination in `table_id` matching `filter`.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            UnknownFactorInFilterError: if a filter pair names a factor not on
+                this table.
+            UnknownFactorValueInFilterError: if a filter pair names a value
+                not on that factor.
+            InvalidCombinationStatusError: if a status string in `filter`/`patch`
+                isn't a valid status.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -142,6 +162,17 @@ class CombinationsUseCases:
         factor_values: tuple[tuple[int, int], ...] = (),
         page: PageRequest = PageRequest(),
     ) -> Page[CombinationDTO]:
+        """List a decision table's combinations, optionally filtered by
+        status and/or factor-value assignment.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            UnknownFactorInFilterError: if a filter pair names a factor not on
+                this table.
+            UnknownFactorValueInFilterError: if a filter pair names a value
+                not on that factor.
+            InvalidCombinationStatusError: if `status` isn't a valid status.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")
@@ -164,6 +195,23 @@ class CombinationsUseCases:
         assignment: tuple[tuple[int, int], ...] = (),
         page: PageRequest = PageRequest(),
     ) -> EvaluateResult:
+        """Evaluate a (possibly partial) factor-value assignment against a
+        decision table's combinations.
+
+        A full assignment (one value per factor) returns the single matching
+        combination, if any (`kind == "single"`); a partial or empty
+        assignment returns every consistent combination as a page
+        (`kind == "list"`).
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            DuplicateFactorInAssignmentError: if `assignment` names the same
+                factor twice.
+            UnknownFactorInFilterError: if `assignment` names a factor not on
+                this table.
+            UnknownFactorValueInFilterError: if `assignment` names a value
+                not on that factor.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")

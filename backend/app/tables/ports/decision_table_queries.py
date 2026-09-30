@@ -38,10 +38,13 @@ class DecisionTableSummaryDTO:
 
 
 class DecisionTableQueries(ABC):
-    @abstractmethod
-    async def get(self, table_id: int) -> DecisionTableDTO | None: ...
+    """Read-side port for the `DecisionTable` aggregate."""
 
     @abstractmethod
-    async def list_summaries(
-        self, page: PageRequest
-    ) -> Page[DecisionTableSummaryDTO]: ...
+    async def get(self, table_id: int) -> DecisionTableDTO | None:
+        """Return a decision table with its factors and values, or None if
+        `table_id` doesn't exist."""
+
+    @abstractmethod
+    async def list_summaries(self, page: PageRequest) -> Page[DecisionTableSummaryDTO]:
+        """Return a page of decision table summaries, most recently created first."""

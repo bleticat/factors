@@ -16,6 +16,8 @@ from app.combinations.ports.combination_repository import CombinationFilter
 def apply_combination_filter(
     stmt: Select, table_id: int, filter_: CombinationFilter
 ) -> Select:
+    """Return `stmt` narrowed to `table_id`'s combinations matching
+    `filter_`'s status and factor-value constraints (AND-ed together)."""
     stmt = stmt.where(CombinationRow.decision_table_id == table_id)
     if filter_.status is not None:
         stmt = stmt.where(CombinationRow.status == str(filter_.status))

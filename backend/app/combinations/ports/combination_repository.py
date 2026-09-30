@@ -35,10 +35,13 @@ class CombinationRepository(ABC):
     the single-row edit path."""
 
     @abstractmethod
-    async def bulk_insert(self, combinations: list[Combination]) -> None: ...
+    async def bulk_insert(self, combinations: list[Combination]) -> None:
+        """Insert a batch of newly-generated combinations in one set-based
+        operation."""
 
     @abstractmethod
-    async def get(self, table_id: int, combination_id: int) -> Combination | None: ...
+    async def get(self, table_id: int, combination_id: int) -> Combination | None:
+        """Return one combination, or None if it doesn't exist on this table."""
 
     @abstractmethod
     async def save(self, combination: Combination) -> None:

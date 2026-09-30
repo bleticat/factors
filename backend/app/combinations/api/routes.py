@@ -21,6 +21,7 @@ router = APIRouter()
 def get_combinations_use_cases(
     database: Database = Depends(get_database),
 ) -> CombinationsUseCases:
+    """FastAPI dependency: build a `CombinationsUseCases` for the current request."""
     return CombinationsUseCases(database)
 
 
@@ -55,6 +56,7 @@ async def patch_combination(
     body: schemas.PatchCombinationRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
+    """Update a single combination's status, output, and/or impossible reason."""
     fields = body.model_fields_set
     return await use_cases.patch_combination(
         table_id=table_id,
@@ -73,6 +75,7 @@ async def bulk_patch_combinations(
     body: schemas.BulkPatchCombinationsRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
+    """Apply a patch to every combination matching a filter."""
     patch_fields = body.patch.model_fields_set
     return await use_cases.bulk_patch_combinations(
         table_id=table_id,
@@ -96,6 +99,8 @@ async def evaluate(
     body: schemas.EvaluateRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
+    """Evaluate a (possibly partial) factor-value assignment against a
+    decision table's combinations."""
     return await use_cases.evaluate_combinations(
         table_id=table_id,
         assignment=tuple(body.assignment),

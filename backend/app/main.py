@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """FastAPI lifespan: create the database engine, sweep stale generation
+    jobs left `running` by a previous crash, and dispose the engine on
+    shutdown."""
     engine = create_engine(settings.database_url)
     database = SqlAlchemyDatabase(engine)
     app.state.database = database
@@ -38,6 +41,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
+    """Build the FastAPI app: CORS, domain-error exception handlers, and
+    every module's router mounted under `/api/decision-tables`."""
     app = FastAPI(title="Factors — Decision Table Generator", lifespan=lifespan)
 
     app.add_middleware(

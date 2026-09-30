@@ -13,6 +13,8 @@ INTERRUPTED_MESSAGE = "Interrupted by server restart"
 
 
 async def sweep_stale_generation_jobs(database: Database) -> int:
+    """Mark any job left `running` by a previous process as `failed`.
+    Returns how many jobs were swept."""
     use_cases = GenerationUseCases(database)
     stale_job_ids = await use_cases.list_stale_running_generation_jobs()
     if not stale_job_ids:

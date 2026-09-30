@@ -44,4 +44,7 @@ class Database(Protocol):
     rules_queries: RuleQueries
     jobs_queries: GenerationJobQueries
 
-    def unit_of_work(self) -> AbstractAsyncContextManager[UnitOfWork]: ...
+    def unit_of_work(self) -> AbstractAsyncContextManager[UnitOfWork]:
+        """Open one transaction's worth of every module's write-side
+        repository, committing on clean exit and rolling back on exception."""
+        ...

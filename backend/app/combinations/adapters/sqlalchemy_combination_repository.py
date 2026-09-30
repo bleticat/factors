@@ -35,6 +35,8 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
         self._session = session
 
     async def bulk_insert(self, combinations: list[Combination]) -> None:
+        """Insert a batch of newly-generated combinations in one set-based
+        operation."""
         if not combinations:
             return
         rows = [
@@ -64,6 +66,7 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
         await self._session.flush()
 
     async def get(self, table_id: int, combination_id: int) -> Combination | None:
+        """Return one combination, or None if it doesn't exist on this table."""
         stmt = (
             select(CombinationRow)
             .where(
@@ -76,6 +79,8 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
         return None if row is None else _to_domain(row)
 
     async def save(self, combination: Combination) -> None:
+        """Persist status/output/impossible_reason for one already-existing
+        combination."""
         assert combination.id is not None
         row = await self._session.get(CombinationRow, combination.id)
         assert row is not None
@@ -87,6 +92,11 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
     async def bulk_update_status(
         self, table_id: int, filter_: CombinationFilter, patch: CombinationPatch
     ) -> tuple[int, int]:
+        """Apply `patch` to every combination in `table_id` matching
+        `filter_` in one set-based UPDATE. Returns (matched_count,
+        updated_count) — the two are equal in v1 since there's no
+        concurrent-modification detection, but kept distinct in the
+        signature for that future case."""
         matched_stmt = apply_combination_filter(
             select(CombinationRow.id), table_id, filter_
         )
@@ -117,6 +127,8 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
         return len(matched_ids), result.rowcount or 0
 
     async def delete_all_for_table(self, table_id: int) -> None:
+        """Used both by regeneration (delete-and-recreate) and by factor/
+        value deletion (invalidates existing combinations' signatures)."""
         stmt = delete(CombinationRow).where(
             CombinationRow.decision_table_id == table_id
         )

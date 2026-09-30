@@ -24,6 +24,8 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "--doctest-modules"
+testpaths = ["tests", "app"]
 
 [tool.ruff.lint]
 # B008: FastAPI's `Depends(...)` in a parameter default is the framework's

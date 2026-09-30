@@ -15,6 +15,7 @@ router = APIRouter()
 
 
 def get_rules_use_cases(database: Database = Depends(get_database)) -> RulesUseCases:
+    """FastAPI dependency: build a `RulesUseCases` for the current request."""
     return RulesUseCases(database)
 
 
@@ -24,6 +25,8 @@ async def create_rule(
     body: schemas.CreateRuleRequest,
     use_cases: RulesUseCases = Depends(get_rules_use_cases),
 ):
+    """Create a new rule and immediately apply it to the table's current
+    combinations."""
     return await use_cases.create_rule(
         table_id=table_id,
         factor_values=tuple(body.factor_values),
@@ -39,6 +42,7 @@ async def list_rules(
     offset: int = 0,
     use_cases: RulesUseCases = Depends(get_rules_use_cases),
 ):
+    """List a decision table's rules, each tagged with its shadowed-match count."""
     return await use_cases.list_rules(
         table_id=table_id, page=PageRequest(limit=limit, offset=offset)
     )
@@ -51,6 +55,7 @@ async def list_rule_overlaps(
     offset: int = 0,
     use_cases: RulesUseCases = Depends(get_rules_use_cases),
 ):
+    """List combinations matched by 2+ of the table's current rules."""
     return await use_cases.list_rule_overlaps(
         table_id=table_id, page=PageRequest(limit=limit, offset=offset)
     )
@@ -63,6 +68,7 @@ async def update_rule(
     body: schemas.UpdateRuleRequest,
     use_cases: RulesUseCases = Depends(get_rules_use_cases),
 ):
+    """Update a rule's output, title, and/or assignment in place."""
     fields = body.model_fields_set
     return await use_cases.update_rule(
         table_id=table_id,
@@ -81,6 +87,7 @@ async def update_rule(
 async def delete_rule(
     table_id: int, rule_id: int, use_cases: RulesUseCases = Depends(get_rules_use_cases)
 ) -> None:
+    """Delete a rule."""
     await use_cases.delete_rule(table_id=table_id, rule_id=rule_id)
 
 
@@ -88,6 +95,7 @@ async def delete_rule(
 async def reapply_rules(
     table_id: int, use_cases: RulesUseCases = Depends(get_rules_use_cases)
 ):
+    """Replay every rule for a table against its current combinations, in order."""
     return await use_cases.reapply_rules(table_id)
 
 
@@ -97,6 +105,8 @@ async def reorder_rules(
     body: schemas.ReorderRulesRequest,
     use_cases: RulesUseCases = Depends(get_rules_use_cases),
 ):
+    """Persist a complete new rule order and immediately replay every rule
+    in that order."""
     return await use_cases.reorder_rules(
         table_id=table_id, ordered_rule_ids=tuple(body.ordered_rule_ids)
     )

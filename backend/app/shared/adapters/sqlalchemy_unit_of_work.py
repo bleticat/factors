@@ -29,6 +29,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
     `rules`) share that one transaction automatically."""
 
     def __init__(self, session: AsyncSession) -> None:
+        """Wire every module's write-side repository to the same `session`."""
         self.tables = SqlAlchemyDecisionTableRepository(session)
         self.jobs = SqlAlchemyGenerationJobRepository(session)
         self.combinations = SqlAlchemyCombinationRepository(session)

@@ -14,7 +14,8 @@ class GenerationJobRepository(ABC):
         """Insert a new job and populate its generated `id` in place."""
 
     @abstractmethod
-    async def get(self, job_id: int) -> GenerationJob | None: ...
+    async def get(self, job_id: int) -> GenerationJob | None:
+        """Return a job, or None if `job_id` doesn't exist."""
 
     @abstractmethod
     async def get_for_update(self, job_id: int) -> GenerationJob | None:
@@ -22,7 +23,8 @@ class GenerationJobRepository(ABC):
         the same transaction — read fresh, not from any cache."""
 
     @abstractmethod
-    async def save(self, job: GenerationJob) -> None: ...
+    async def save(self, job: GenerationJob) -> None:
+        """Persist a job's current status/progress fields."""
 
     @abstractmethod
     async def has_active_job(self, table_id: int) -> bool:

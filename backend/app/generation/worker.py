@@ -21,6 +21,10 @@ _TERMINAL_STATUS_VALUES = {str(status) for status in TERMINAL_STATUSES}
 
 
 async def run_generation_job(database: Database, job_id: int, batch_size: int) -> None:
+    """Drive a generation job to completion (or failure), one
+    `batch_size`-row batch and one transaction at a time, then reapply the
+    table's rules once generation completes. Marks the job failed and
+    returns if a batch raises."""
     generation = GenerationUseCases(database)
     while True:
         try:

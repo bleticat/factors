@@ -71,6 +71,11 @@ class TablesUseCases:
     async def create_decision_table(
         self, name: str, description: str | None = None
     ) -> DecisionTableRef:
+        """Create a new decision table.
+
+        Raises:
+            EmptyNameError: if `name` is blank.
+        """
         if not name.strip():
             raise EmptyNameError("name")
         async with self._database.unit_of_work() as uow:
@@ -89,6 +94,15 @@ class TablesUseCases:
         description: str | None = None,
         description_set: bool = False,
     ) -> DecisionTableRef:
+        """Update a decision table's name and/or description.
+
+        `description` is only applied when `description_set` is True, so a
+        caller can distinguish "leave description alone" from "clear it".
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            EmptyNameError: if `name` is given but blank.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -107,12 +121,21 @@ class TablesUseCases:
             )
 
     async def delete_decision_table(self, table_id: int) -> None:
+        """Delete a decision table. A no-op if `table_id` doesn't exist."""
         async with self._database.unit_of_work() as uow:
             await uow.tables.delete(table_id)
 
     # --- Factors --------------------------------------------------------------
 
     async def add_factor(self, table_id: int, name: str) -> FactorRef:
+        """Add a new factor to a decision table.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            EmptyNameError: if `name` is blank.
+            DuplicateFactorNameError: if `name` is already used in this table.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -133,6 +156,15 @@ class TablesUseCases:
         name: str | None = None,
         order_index: int | None = None,
     ) -> FactorRef:
+        """Update a factor's name and/or order index.
+
+        Raises:
+            NotFoundError: if `table_id` or `factor_id` doesn't exist.
+            EmptyNameError: if `name` is given but blank.
+            DuplicateFactorNameError: if `name` is already used by another
+                factor in this table.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -157,6 +189,13 @@ class TablesUseCases:
             )
 
     async def delete_factor(self, table_id: int, factor_id: int) -> None:
+        """Delete a factor, cascading to every combination and rule for its
+        table (both may reference the deleted factor).
+
+        Raises:
+            NotFoundError: if `table_id` or `factor_id` doesn't exist.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -181,6 +220,14 @@ class TablesUseCases:
     async def add_factor_value(
         self, table_id: int, factor_id: int, value: str
     ) -> FactorValueRef:
+        """Add a new value to a factor.
+
+        Raises:
+            NotFoundError: if `table_id` or `factor_id` doesn't exist.
+            EmptyNameError: if `value` is blank.
+            DuplicateFactorValueError: if `value` already exists on this factor.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -205,6 +252,15 @@ class TablesUseCases:
         value: str | None = None,
         order_index: int | None = None,
     ) -> FactorValueRef:
+        """Update a factor value's value and/or order index.
+
+        Raises:
+            NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
+            EmptyNameError: if `value` is given but blank.
+            DuplicateFactorValueError: if `value` is already used by another
+                value on this factor.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -234,6 +290,13 @@ class TablesUseCases:
     async def delete_factor_value(
         self, table_id: int, factor_id: int, value_id: int
     ) -> None:
+        """Delete a factor value, cascading to every combination and rule
+        for its table (both may reference the deleted value).
+
+        Raises:
+            NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
+            GenerationInProgressError: if the table has a generation job running.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -258,6 +321,11 @@ class TablesUseCases:
     # --- Reads ------------------------------------------------------------------
 
     async def get_decision_table(self, table_id: int) -> DecisionTableDTO:
+        """Return a decision table with its factors and their values.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")
@@ -266,9 +334,15 @@ class TablesUseCases:
     async def list_decision_tables(
         self, page: PageRequest = PageRequest()
     ) -> Page[DecisionTableSummaryDTO]:
+        """Return a page of decision table summaries, most recently created first."""
         return await self._database.tables_queries.list_summaries(page)
 
     async def list_factors(self, table_id: int) -> list[FactorDTO]:
+        """Return a decision table's factors and their values.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")

@@ -56,15 +56,17 @@ class CombinationOverlapDTO:
 
 
 class CombinationQueries(ABC):
+    """Read-side port for `Combination`/`CombinationValue`."""
+
     @abstractmethod
     async def list_(
         self, table_id: int, filter_: CombinationFilter, page: PageRequest
-    ) -> Page[CombinationDTO]: ...
+    ) -> Page[CombinationDTO]:
+        """Return a page of a decision table's combinations matching `filter_`."""
 
     @abstractmethod
-    async def get(
-        self, table_id: int, combination_id: int
-    ) -> CombinationDTO | None: ...
+    async def get(self, table_id: int, combination_id: int) -> CombinationDTO | None:
+        """Return one combination, or None if it doesn't exist on this table."""
 
     @abstractmethod
     async def find_by_exact_assignment(

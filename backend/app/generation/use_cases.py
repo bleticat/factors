@@ -38,6 +38,19 @@ class GenerationUseCases:
     async def request_generation(
         self, table_id: int, *, max_combinations: int
     ) -> GenerationJobRef:
+        """Start generating combinations for a decision table: deletes any
+        existing combinations (delete-and-recreate semantics, spec 002) and
+        creates a pending job for the background worker to drive.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            NoFactorsError: if the table has no factors.
+            FactorHasNoValuesError: if any factor has no values.
+            GenerationAlreadyInProgressError: if a job is already active for
+                this table.
+            CombinationCapExceededError: if the projected combination count
+                exceeds `max_combinations`.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -68,6 +81,12 @@ class GenerationUseCases:
             return to_ref(job)
 
     async def cancel_generation_job(self, job_id: int) -> GenerationJobRef:
+        """Cancel an active generation job.
+
+        Raises:
+            NotFoundError: if `job_id` doesn't exist.
+            InvalidGenerationJobTransitionError: if the job is already terminal.
+        """
         async with self._database.unit_of_work() as uow:
             job = await uow.jobs.get(job_id)
             if job is None:
@@ -79,6 +98,11 @@ class GenerationUseCases:
     async def mark_generation_job_failed(
         self, job_id: int, error_message: str
     ) -> GenerationJobRef:
+        """Mark a generation job failed with `error_message`.
+
+        Raises:
+            NotFoundError: if `job_id` doesn't exist.
+        """
         async with self._database.unit_of_work() as uow:
             job = await uow.jobs.get(job_id)
             if job is None:
@@ -92,6 +116,8 @@ class GenerationUseCases:
         job_ids: list[int] | None = None,
         error_message: str = "Interrupted by server restart",
     ) -> int:
+        """Bulk-fail the given jobs (used to sweep jobs left `running` by a
+        crashed process at startup). Returns how many rows were updated."""
         async with self._database.unit_of_work() as uow:
             return await uow.jobs.mark_failed_bulk(job_ids or [], error_message)
 
@@ -104,6 +130,9 @@ class GenerationUseCases:
         background loop (`generation/worker.py`) calls this repeatedly; it
         is itself a boundary, not a use-case method, so it may loop over it
         freely.
+
+        Raises:
+            NotFoundError: if `job_id` or its decision table doesn't exist.
         """
         async with self._database.unit_of_work() as uow:
             # Read live status/cursor fresh, inside this call's own
@@ -172,10 +201,17 @@ class GenerationUseCases:
     # --- Reads ------------------------------------------------------------------
 
     async def get_generation_job(self, job_id: int) -> GenerationJobDTO:
+        """Return a generation job's current status and progress.
+
+        Raises:
+            NotFoundError: if `job_id` doesn't exist.
+        """
         job = await self._database.jobs_queries.get(job_id)
         if job is None:
             raise NotFoundError(f"Generation job {job_id} not found")
         return job
 
     async def list_stale_running_generation_jobs(self) -> list[int]:
+        """Return the ids of jobs left `running` by a previous process that
+        crashed or was killed (used by the startup sweep)."""
         return await self._database.jobs_queries.list_stale_running()

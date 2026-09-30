@@ -31,6 +31,7 @@ class SqlAlchemyRuleQueries(RuleQueries):
         self._session_factory = session_factory
 
     async def list_for_table(self, table_id: int, page: PageRequest) -> Page[RuleDTO]:
+        """Return a page of a decision table's rules, ordered by `order_index`."""
         async with self._session_factory() as session:
             count_stmt = select(func.count(RuleRow.id)).where(
                 RuleRow.decision_table_id == table_id
@@ -54,6 +55,10 @@ class SqlAlchemyRuleQueries(RuleQueries):
             )
 
     async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:
+        """Unpaginated, ordered by `order_index` — the same order rules are
+        (re)applied in (spec 008; was creation/id order before it). Used by
+        `list_rule_overlaps`, which needs every rule's assignment to compute
+        overlaps, not one page."""
         async with self._session_factory() as session:
             stmt = (
                 select(RuleRow)
@@ -65,6 +70,7 @@ class SqlAlchemyRuleQueries(RuleQueries):
             return [_to_dto(row) for row in rows]
 
     async def get(self, table_id: int, rule_id: int) -> RuleDTO | None:
+        """Return one rule, or None if it doesn't exist on this table."""
         async with self._session_factory() as session:
             stmt = (
                 select(RuleRow)

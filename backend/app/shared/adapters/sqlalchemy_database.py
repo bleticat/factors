@@ -34,6 +34,8 @@ from app.tables.adapters.sqlalchemy_decision_table_queries import (
 
 
 def create_engine(database_url: str) -> AsyncEngine:
+    """Create the app's async SQLAlchemy engine, applying SQLite-specific
+    pragmas (WAL, foreign keys, busy timeout) when `database_url` is sqlite."""
     engine = create_async_engine(database_url, future=True)
 
     if database_url.startswith("sqlite"):
@@ -66,5 +68,7 @@ class SqlAlchemyDatabase(Database):
 
     @asynccontextmanager
     async def unit_of_work(self) -> AsyncIterator[UnitOfWork]:
+        """Open one database transaction and yield a `UnitOfWork` bound to
+        it; commits on clean exit, rolls back on exception."""
         async with self._session_factory() as session, session.begin():
             yield SqlAlchemyUnitOfWork(session)

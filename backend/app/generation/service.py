@@ -19,6 +19,16 @@ class GenerationJobRef:
 
 
 def to_ref(job: GenerationJob) -> GenerationJobRef:
+    """Project a `GenerationJob` down to the small ref shape use cases return.
+
+    >>> from app.generation.entities import GenerationJobStatus
+    >>> job = GenerationJob(
+    ...     id=1, decision_table_id=2, status=GenerationJobStatus.RUNNING,
+    ...     total_combinations=10, created_count=4,
+    ... )
+    >>> to_ref(job)
+    GenerationJobRef(id=1, decision_table_id=2, status='running', total_combinations=10, created_count=4, error_message=None)
+    """
     assert job.id is not None
     return GenerationJobRef(
         id=job.id,

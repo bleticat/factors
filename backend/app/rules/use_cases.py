@@ -52,6 +52,19 @@ class RulesUseCases:
         output: str = "",
         title: str | None = None,
     ) -> RuleRef:
+        """Create a new rule for a decision table and immediately apply it
+        to the table's current combinations (spec 005).
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            EmptyNameError: if `output` is blank.
+            DuplicateFactorInAssignmentError: if `factor_values` names the
+                same factor twice.
+            UnknownFactorInFilterError: if `factor_values` names a factor not
+                on this table.
+            UnknownFactorValueInFilterError: if `factor_values` names a value
+                not on that factor.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -109,7 +122,18 @@ class RulesUseCases:
         relative to other rules (spec 009) — a rule shadowed by a later, more
         general one is the user's call to notice and fix (surfaced via
         `list_rule_overlaps`/`list_rules`' `shadowed_count`), not something
-        the backend blocks."""
+        the backend blocks.
+
+        Raises:
+            NotFoundError: if `table_id` or `rule_id` doesn't exist.
+            EmptyNameError: if `output` is given but blank.
+            DuplicateFactorInAssignmentError: if `factor_values` names the
+                same factor twice.
+            UnknownFactorInFilterError: if `factor_values` names a factor not
+                on this table.
+            UnknownFactorValueInFilterError: if `factor_values` names a value
+                not on that factor.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -152,6 +176,12 @@ class RulesUseCases:
             )
 
     async def delete_rule(self, table_id: int, rule_id: int) -> None:
+        """Delete a rule. Combinations it last patched keep their current
+        status/output (see spec 005's "no revert on delete").
+
+        Raises:
+            NotFoundError: if `table_id` or `rule_id` doesn't exist.
+        """
         async with self._database.unit_of_work() as uow:
             # Deleting a rule leaves whatever status/output it last set on
             # combinations untouched — see spec 005's "no revert on delete".
@@ -168,7 +198,13 @@ class RulesUseCases:
         (spec 009): a rule that ends up shadowed by a later, more general
         one is the user's call to notice (surfaced via `shadowed_count`/
         `list_rule_overlaps`) and fix by dragging it further down, not
-        something the backend rejects."""
+        something the backend rejects.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+            InvalidRuleOrderError: if `ordered_rule_ids` isn't a permutation
+                of the table's existing rule ids.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -199,7 +235,11 @@ class RulesUseCases:
         the generation worker once a job reaches `completed`, and exposed
         for on-demand use. Bounded by the table's rule count (not by
         combination count), so — unlike generation — it fits in a single
-        transaction without batching."""
+        transaction without batching.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+        """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
@@ -216,6 +256,12 @@ class RulesUseCases:
     async def list_rules(
         self, table_id: int, page: PageRequest = PageRequest()
     ) -> Page[RuleDTO]:
+        """List a decision table's rules, each tagged with how many of its
+        matched combinations are currently shadowed by a later rule (spec 009).
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")
@@ -265,7 +311,11 @@ class RulesUseCases:
     ) -> Page[CombinationOverlapDTO]:
         """See spec 006: rows matched by 2+ of the table's current rules,
         tagged with which rules matched and (last in id order) which one
-        currently wins a reapply."""
+        currently wins a reapply.
+
+        Raises:
+            NotFoundError: if `table_id` doesn't exist.
+        """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
             raise NotFoundError(f"Decision table {table_id} not found")

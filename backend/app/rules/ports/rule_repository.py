@@ -12,13 +12,16 @@ class RuleRepository(ABC):
     rule wins" replay rule and spec 008's explicit, editable ordering)."""
 
     @abstractmethod
-    async def add(self, rule: Rule) -> Rule: ...
+    async def add(self, rule: Rule) -> Rule:
+        """Insert a new rule and populate its generated `id` in place."""
 
     @abstractmethod
-    async def get(self, table_id: int, rule_id: int) -> Rule | None: ...
+    async def get(self, table_id: int, rule_id: int) -> Rule | None:
+        """Return one rule, or None if it doesn't exist on this table."""
 
     @abstractmethod
-    async def list_for_table(self, table_id: int) -> list[Rule]: ...
+    async def list_for_table(self, table_id: int) -> list[Rule]:
+        """Return every rule for a table, ordered by `order_index`."""
 
     @abstractmethod
     async def save(self, rule: Rule) -> None:

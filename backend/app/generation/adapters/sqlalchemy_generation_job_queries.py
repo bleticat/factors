@@ -16,6 +16,8 @@ class SqlAlchemyGenerationJobQueries(GenerationJobQueries):
         self._session_factory = session_factory
 
     async def list_stale_running(self) -> list[int]:
+        """Ids of all jobs currently in `running` status (used by the
+        startup sweep — none can legitimately survive a process restart)."""
         async with self._session_factory() as session:
             stmt = select(GenerationJobRow.id).where(
                 GenerationJobRow.status == str(GenerationJobStatus.RUNNING)
@@ -24,6 +26,8 @@ class SqlAlchemyGenerationJobQueries(GenerationJobQueries):
             return [row[0] for row in result.all()]
 
     async def get(self, job_id: int) -> GenerationJobDTO | None:
+        """Return a job's current status and progress, or None if
+        `job_id` doesn't exist."""
         async with self._session_factory() as session:
             row = await session.get(GenerationJobRow, job_id)
             if row is None:

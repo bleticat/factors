@@ -31,6 +31,12 @@ class Factor:
     values: list[FactorValue] = field(default_factory=list)
 
     def add_value(self, value: str) -> FactorValue:
+        """Append a new value to this factor and return it.
+
+        Raises:
+            EmptyNameError: if `value` is blank.
+            DuplicateFactorValueError: if `value` already exists on this factor.
+        """
         if not value.strip():
             raise EmptyNameError("value")
         if any(v.value == value for v in self.values):
@@ -40,6 +46,7 @@ class Factor:
         return factor_value
 
     def get_value(self, value_id: int) -> FactorValue | None:
+        """Return this factor's value with id `value_id`, or None if it has none."""
         return next((v for v in self.values if v.id == value_id), None)
 
 
@@ -51,6 +58,12 @@ class DecisionTable:
     factors: list[Factor] = field(default_factory=list)
 
     def add_factor(self, name: str) -> Factor:
+        """Append a new factor to this table and return it.
+
+        Raises:
+            EmptyNameError: if `name` is blank.
+            DuplicateFactorNameError: if `name` already exists on this table.
+        """
         if not name.strip():
             raise EmptyNameError("name")
         if any(f.name == name for f in self.factors):
@@ -60,9 +73,11 @@ class DecisionTable:
         return factor
 
     def get_factor(self, factor_id: int) -> Factor | None:
+        """Return this table's factor with id `factor_id`, or None if it has none."""
         return next((f for f in self.factors if f.id == factor_id), None)
 
     def ordered_factors(self) -> list[Factor]:
+        """Return this table's factors sorted by `order_index`."""
         return sorted(self.factors, key=lambda f: f.order_index)
 
     def validate_factor_value_pairs(self, pairs: list[tuple[int, int]]) -> None:
@@ -77,6 +92,8 @@ class DecisionTable:
                 raise UnknownFactorValueInFilterError(factor_value_id, factor_id)
 
     def total_combinations(self) -> int:
+        """Return the cartesian-product size of this table's factor values,
+        or 0 if it has no factors or any factor has no values."""
         if not self.factors:
             return 0
         total = 1

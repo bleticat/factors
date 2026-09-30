@@ -32,13 +32,15 @@ class RuleDTO:
 
 
 class RuleQueries(ABC):
-    @abstractmethod
-    async def list_for_table(
-        self, table_id: int, page: PageRequest
-    ) -> Page[RuleDTO]: ...
+    """Read-side port for `Rule`."""
 
     @abstractmethod
-    async def get(self, table_id: int, rule_id: int) -> RuleDTO | None: ...
+    async def list_for_table(self, table_id: int, page: PageRequest) -> Page[RuleDTO]:
+        """Return a page of a decision table's rules, ordered by `order_index`."""
+
+    @abstractmethod
+    async def get(self, table_id: int, rule_id: int) -> RuleDTO | None:
+        """Return one rule, or None if it doesn't exist on this table."""
 
     @abstractmethod
     async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:

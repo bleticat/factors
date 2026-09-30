@@ -19,6 +19,7 @@ router = APIRouter()
 def get_generation_use_cases(
     database: Database = Depends(get_database),
 ) -> GenerationUseCases:
+    """FastAPI dependency: build a `GenerationUseCases` for the current request."""
     return GenerationUseCases(database)
 
 
@@ -29,6 +30,8 @@ async def request_generation(
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
     database: Database = Depends(get_database),
 ):
+    """Start generating combinations for a decision table and schedule the
+    background batch loop that drives the job to completion."""
     job = await use_cases.request_generation(
         table_id, max_combinations=settings.max_combinations
     )
@@ -47,6 +50,7 @@ async def get_generation_job(
     job_id: int,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
+    """Get a generation job's current status and progress."""
     return await use_cases.get_generation_job(job_id)
 
 
@@ -56,4 +60,5 @@ async def cancel_generation_job(
     job_id: int,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
+    """Cancel an active generation job."""
     return await use_cases.cancel_generation_job(job_id)

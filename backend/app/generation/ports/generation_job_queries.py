@@ -15,8 +15,12 @@ class GenerationJobDTO:
 
 
 class GenerationJobQueries(ABC):
+    """Read-side port for `GenerationJob`."""
+
     @abstractmethod
-    async def get(self, job_id: int) -> GenerationJobDTO | None: ...
+    async def get(self, job_id: int) -> GenerationJobDTO | None:
+        """Return a job's current status and progress, or None if
+        `job_id` doesn't exist."""
 
     @abstractmethod
     async def list_stale_running(self) -> list[int]:

@@ -13,4 +13,5 @@ from app.shared.ports.database import Database
 
 
 def get_database(request: Request) -> Database:
+    """FastAPI dependency: return the app's long-lived `Database` instance."""
     return request.app.state.database
