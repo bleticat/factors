@@ -1,6 +1,6 @@
 """Verifies spec 005's "rules re-apply automatically once generation
 completes" behavior. That hook lives in the generation worker boundary
-(`app.generation.worker.run_generation_job`), which drives a job across
+(`app.application.generation.worker.run_generation_job`), which drives a job across
 multiple batches/transactions and reapplies rules once it completes — a
 single `generate_combinations_batch` call can't do that on its own, so this
 must drive generation through the real worker loop rather than the raw
@@ -9,12 +9,12 @@ batch-call loop `tests/helpers.generate_and_wait` uses.
 
 from __future__ import annotations
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.generation.use_cases import GenerationUseCases
-from app.generation.worker import run_generation_job
-from app.rules.use_cases import RulesUseCases
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import TablesUseCases
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.generation.use_cases import GenerationUseCases
+from app.application.generation.worker import run_generation_job
+from app.application.pagination import PageRequest
+from app.application.rules.use_cases import RulesUseCases
+from app.application.tables.use_cases import TablesUseCases
 from tests.helpers import DEFAULT_TEST_MAX_COMBINATIONS, build_standard_table
 
 

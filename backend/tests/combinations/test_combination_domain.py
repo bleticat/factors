@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import itertools
 
-from app.combinations.entities import (
+from app.domain.combinations.entities import (
     build_signature,
     decompose_index,
     total_combinations,

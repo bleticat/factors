@@ -9,7 +9,7 @@ services:
       # the container's own Linux-built venv is used instead of whatever
       # (host-platform, possibly absent) .venv lives in ./backend on disk.
       - backend-venv:/app/.venv
-    command: sh -c "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "uv run alembic upgrade head && uv run uvicorn app.entrypoints.server:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
     build: ./frontend

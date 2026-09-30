@@ -1,14 +1,14 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.generation.errors import (
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.generation.use_cases import GenerationUseCases
+from app.application.tables.use_cases import TablesUseCases
+from app.domain.generation.errors import (
     CombinationCapExceededError,
     FactorHasNoValuesError,
     GenerationAlreadyInProgressError,
     NoFactorsError,
 )
-from app.generation.use_cases import GenerationUseCases
-from app.tables.use_cases import TablesUseCases
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     add_factor_with_values,

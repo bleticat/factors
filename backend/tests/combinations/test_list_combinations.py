@@ -1,5 +1,5 @@
-from app.combinations.use_cases import CombinationsUseCases
-from app.shared.pagination import PageRequest
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 

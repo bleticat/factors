@@ -1,5 +1,5 @@
-from app.rules.use_cases import RulesUseCases
-from app.shared.pagination import PageRequest
+from app.application.pagination import PageRequest
+from app.application.rules.use_cases import RulesUseCases
 from tests.helpers import build_standard_table, generate_and_wait
 
 

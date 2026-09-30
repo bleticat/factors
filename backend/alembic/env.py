@@ -8,14 +8,19 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Import the ORM mappings so they register on Base.metadata before
-# autogenerate diffs against it. Add a new module's `adapters.orm` import
-# here too if a future module introduces one.
-from app.combinations.adapters import orm as combinations_orm  # noqa: F401
+# autogenerate diffs against it. Add a new feature's
+# `adapters/outbound/persistence/<feature>/orm.py` import here too if a
+# future feature introduces one.
+from app.adapters.outbound.persistence.combinations import (
+    orm as combinations_orm,  # noqa: F401
+)
+from app.adapters.outbound.persistence.generation import (
+    orm as generation_orm,  # noqa: F401
+)
+from app.adapters.outbound.persistence.orm_base import Base
+from app.adapters.outbound.persistence.rules import orm as rules_orm  # noqa: F401
+from app.adapters.outbound.persistence.tables import orm as tables_orm  # noqa: F401
 from app.config import settings
-from app.generation.adapters import orm as generation_orm  # noqa: F401
-from app.rules.adapters import orm as rules_orm  # noqa: F401
-from app.shared.adapters.orm_base import Base
-from app.tables.adapters import orm as tables_orm  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

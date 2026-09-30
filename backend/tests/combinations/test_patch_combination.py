@@ -1,8 +1,8 @@
 import pytest
 
-from app.combinations.errors import InvalidCombinationStatusError
-from app.combinations.use_cases import CombinationsUseCases
-from app.shared.errors import NotFoundError
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.domain.combinations.errors import InvalidCombinationStatusError
+from app.domain.errors import NotFoundError
 from tests.helpers import build_standard_table, generate_and_wait
 
 

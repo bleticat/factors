@@ -1,8 +1,8 @@
 import pytest
 
-from app.generation.errors import InvalidGenerationJobTransitionError
-from app.generation.use_cases import GenerationUseCases
-from app.shared.errors import NotFoundError
+from app.application.generation.use_cases import GenerationUseCases
+from app.domain.errors import NotFoundError
+from app.domain.generation.errors import InvalidGenerationJobTransitionError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,

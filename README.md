@@ -8,8 +8,9 @@ output, with bulk edits) or save a wildcard **rule** (values for some factors,
 affected-row count shown, and re-applied automatically on regeneration), then
 evaluate the table by factor→value assignment.
 
-See `specs/adr/` for the governing architecture decisions and
-`specs/features/decision_tables/` for the feature specs.
+The backend follows a layered Ports & Adapters structure — see
+`backend/app/` (`domain/`, `application/`, `adapters/`, `entrypoints/`,
+`composition.py`, `config.py`).
 
 ## Running locally
 
@@ -41,7 +42,7 @@ to reset.
 Two terminals:
 
 ```
-cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+cd backend && uv run alembic upgrade head && uv run uvicorn app.entrypoints.server:app --reload
 cd frontend && npm run dev
 ```
 

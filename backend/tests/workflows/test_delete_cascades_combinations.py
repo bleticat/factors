@@ -3,8 +3,8 @@ existing combination's signature, so it cascades deletion of all
 combinations for that table — composes generation (spec 002) with a
 structural mutation (spec 001), hence a workflow test."""
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.tables.use_cases import TablesUseCases
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.tables.use_cases import TablesUseCases
 from tests.helpers import build_standard_table, generate_and_wait
 
 

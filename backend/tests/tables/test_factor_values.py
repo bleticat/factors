@@ -1,8 +1,8 @@
 import pytest
 
-from app.shared.errors import EmptyNameError, NotFoundError
-from app.tables.errors import DuplicateFactorValueError
-from app.tables.use_cases import TablesUseCases
+from app.application.tables.use_cases import TablesUseCases
+from app.domain.errors import EmptyNameError, NotFoundError
+from app.domain.tables.errors import DuplicateFactorValueError
 from tests.helpers import create_table
 
 

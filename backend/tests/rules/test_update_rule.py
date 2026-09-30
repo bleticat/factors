@@ -1,9 +1,9 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.rules.use_cases import RulesUseCases
-from app.shared.errors import EmptyNameError, NotFoundError
-from app.shared.pagination import PageRequest
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.pagination import PageRequest
+from app.application.rules.use_cases import RulesUseCases
+from app.domain.errors import EmptyNameError, NotFoundError
 from tests.helpers import build_standard_table, generate_and_wait
 
 

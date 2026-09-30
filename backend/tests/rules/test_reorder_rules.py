@@ -1,10 +1,10 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.rules.errors import InvalidRuleOrderError
-from app.rules.use_cases import RulesUseCases
-from app.shared.errors import NotFoundError
-from app.shared.pagination import PageRequest
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.pagination import PageRequest
+from app.application.rules.use_cases import RulesUseCases
+from app.domain.errors import NotFoundError
+from app.domain.rules.errors import InvalidRuleOrderError
 from tests.helpers import build_standard_table, generate_and_wait
 
 

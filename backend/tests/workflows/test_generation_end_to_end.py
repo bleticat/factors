@@ -4,13 +4,13 @@ evaluate (full and partial). Composes commands and queries from all four
 feature specs, so it belongs here rather than under commands/ or queries/.
 """
 
-from app.combinations.use_cases import (
+from app.application.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchInput,
     CombinationsUseCases,
 )
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import TablesUseCases
+from app.application.pagination import PageRequest
+from app.application.tables.use_cases import TablesUseCases
 from tests.helpers import build_standard_table, generate_and_wait
 
 

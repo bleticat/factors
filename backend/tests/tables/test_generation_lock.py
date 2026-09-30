@@ -4,9 +4,9 @@ succeed again once the job reaches a terminal state."""
 
 import pytest
 
-from app.generation.errors import GenerationInProgressError
-from app.generation.use_cases import GenerationUseCases
-from app.tables.use_cases import TablesUseCases
+from app.application.generation.use_cases import GenerationUseCases
+from app.application.tables.use_cases import TablesUseCases
+from app.domain.generation.errors import GenerationInProgressError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,

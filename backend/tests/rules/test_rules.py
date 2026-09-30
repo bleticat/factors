@@ -1,23 +1,23 @@
 import pytest
 
-from app.combinations.use_cases import (
+from app.application.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchInput,
     CombinationsUseCases,
 )
-from app.rules.ports.rule_queries import RuleValueDTO
-from app.rules.use_cases import RulesUseCases
-from app.shared.errors import (
+from app.application.pagination import PageRequest
+from app.application.rules.ports.queries import RuleValueDTO
+from app.application.rules.use_cases import RulesUseCases
+from app.application.tables.use_cases import TablesUseCases
+from app.domain.errors import (
     DuplicateFactorInAssignmentError,
     EmptyNameError,
     NotFoundError,
 )
-from app.shared.pagination import PageRequest
-from app.tables.errors import (
+from app.domain.tables.errors import (
     UnknownFactorInFilterError,
     UnknownFactorValueInFilterError,
 )
-from app.tables.use_cases import TablesUseCases
 from tests.helpers import (
     add_factor_with_values,
     build_standard_table,

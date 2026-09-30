@@ -1,9 +1,9 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases
-from app.shared.errors import DuplicateFactorInAssignmentError
-from app.shared.pagination import PageRequest
-from app.tables.errors import (
+from app.application.combinations.use_cases import CombinationsUseCases
+from app.application.pagination import PageRequest
+from app.domain.errors import DuplicateFactorInAssignmentError
+from app.domain.tables.errors import (
     UnknownFactorInFilterError,
     UnknownFactorValueInFilterError,
 )

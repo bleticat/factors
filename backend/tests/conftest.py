@@ -1,7 +1,7 @@
-"""Per ADR 005: each test gets its own fresh database, migrated the same
-way production is (Alembic `upgrade head`, not `create_all`), destroyed
-after. The `database` fixture is a real `SqlAlchemyDatabase`, the same
-concrete type `app/main.py` builds — tests construct the same module
+"""Each test gets its own fresh database, migrated the same way production
+is (Alembic `upgrade head`, not `create_all`), destroyed after. The
+`database` fixture is a real `SqlAlchemyDatabase`, the same concrete type
+`app/composition.py` builds — tests construct the same feature
 `XUseCases(database)` classes that production boundaries use, so tests
 can't drift from production wiring.
 """
@@ -18,7 +18,10 @@ import pytest
 from alembic.config import Config
 
 from alembic import command
-from app.shared.adapters.sqlalchemy_database import SqlAlchemyDatabase, create_engine
+from app.adapters.outbound.persistence.sqlalchemy_database import (
+    SqlAlchemyDatabase,
+    create_engine,
+)
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 

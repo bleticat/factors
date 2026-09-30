@@ -1,15 +1,14 @@
-"""Shared test-setup helpers. Per ADR 005, these only handle arrangement
-(creating tables/factors/values, driving generation to completion) — they
-must never hide the use-case call a test is actually verifying.
+"""Shared test-setup helpers. These only handle arrangement (creating
+tables/factors/values, driving generation to completion) — they must never
+hide the use-case call a test is actually verifying.
 """
 
 from __future__ import annotations
 
-from app.generation.entities import TERMINAL_STATUSES
-from app.generation.service import GenerationJobRef
-from app.generation.use_cases import GenerationUseCases
-from app.shared.ports.database import Database
-from app.tables.use_cases import TablesUseCases
+from app.application.generation.use_cases import GenerationJobRef, GenerationUseCases
+from app.application.ports.database import Database
+from app.application.tables.use_cases import TablesUseCases
+from app.domain.generation.entities import TERMINAL_STATUSES
 
 _TERMINAL_STATUS_VALUES = {str(status) for status in TERMINAL_STATUSES}
 
