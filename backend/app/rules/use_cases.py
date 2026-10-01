@@ -15,6 +15,8 @@ from app.rules.service import RuleApplyRef, apply_rule
 from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
+from app.shared.ports.unit_of_work import UnitOfWork
+from app.shared.uow import uow
 
 
 @dataclass(frozen=True)
@@ -38,12 +40,15 @@ class RulesUseCases:
 
     # --- Writes ---------------------------------------------------------------
 
+    @uow
     async def create_rule(
         self,
         table_id: int,
         factor_values: tuple[tuple[int, int], ...] = (),
         output: str = "",
         title: str | None = None,
+        *,
+        uow: UnitOfWork,
     ) -> RuleRef:
         """Create a new rule for a decision table and immediately apply it
         to the table's current combinations (spec 005).
@@ -54,48 +59,48 @@ class RulesUseCases:
                 same factor twice, or names a factor or value not on this
                 table.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            if not output.strip():
-                raise ValidationError("output must not be empty")
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        if not output.strip():
+            raise ValidationError("output must not be empty")
 
-            seen: set[int] = set()
-            for factor_id, _ in factor_values:
-                if factor_id in seen:
-                    raise ValidationError(
-                        f"Factor {factor_id} is assigned more than once in the same request"
-                    )
-                seen.add(factor_id)
-            table.validate_factor_value_pairs(list(factor_values))
+        seen: set[int] = set()
+        for factor_id, _ in factor_values:
+            if factor_id in seen:
+                raise ValidationError(
+                    f"Factor {factor_id} is assigned more than once in the same request"
+                )
+            seen.add(factor_id)
+        table.validate_factor_value_pairs(list(factor_values))
 
-            new_factor_values = [
-                RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
-                for factor_id, factor_value_id in factor_values
-            ]
-            existing_rules = await uow.rules.list_for_table(table_id)
+        new_factor_values = [
+            RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
+            for factor_id, factor_value_id in factor_values
+        ]
+        existing_rules = await uow.rules.list_for_table(table_id)
 
-            clean_title = title.strip() if title and title.strip() else None
-            rule = Rule(
-                id=None,
-                decision_table_id=table_id,
-                output=output,
-                title=clean_title,
-                order_index=len(
-                    existing_rules
-                ),  # append at the end (spec 008); drag to reorder afterward
-                factor_values=new_factor_values,
-            )
-            rule = await uow.rules.add(rule)
+        clean_title = title.strip() if title and title.strip() else None
+        rule = Rule(
+            id=None,
+            decision_table_id=table_id,
+            output=output,
+            title=clean_title,
+            order_index=len(
+                existing_rules
+            ),  # append at the end (spec 008); drag to reorder afterward
+            factor_values=new_factor_values,
+        )
+        rule = await uow.rules.add(rule)
 
-            applied = await apply_rule(uow.combinations, uow.rules, rule)
-            return RuleRef(
-                id=applied.rule_id,
-                matched_count=applied.matched_count,
-                applied_at=applied.applied_at,
-            )
+        applied = await apply_rule(uow.combinations, uow.rules, rule)
+        return RuleRef(
+            id=applied.rule_id,
+            matched_count=applied.matched_count,
+            applied_at=applied.applied_at,
+        )
 
+    @uow
     async def update_rule(
         self,
         table_id: int,
@@ -105,6 +110,8 @@ class RulesUseCases:
         title_set: bool = False,
         factor_values: tuple[tuple[int, int], ...] | None = None,
         factor_values_set: bool = False,
+        *,
+        uow: UnitOfWork,
     ) -> RuleRef:
         """Edits an existing rule's output/title/assignment in place, without
         changing its position (`order_index`) — see spec 008/009. Reordering is
@@ -121,65 +128,71 @@ class RulesUseCases:
                 names the same factor twice, or names a factor or value not
                 on this table.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            rule = await uow.rules.get(table_id, rule_id)
-            if rule is None:
-                raise NotFoundError(f"Rule {rule_id} not found")
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        rule = await uow.rules.get(table_id, rule_id)
+        if rule is None:
+            raise NotFoundError(f"Rule {rule_id} not found")
 
-            if output is not None:
-                if not output.strip():
-                    raise ValidationError("output must not be empty")
-                rule.output = output
-            if title_set:
-                rule.title = title.strip() if title and title.strip() else None
+        if output is not None:
+            if not output.strip():
+                raise ValidationError("output must not be empty")
+            rule.output = output
+        if title_set:
+            rule.title = title.strip() if title and title.strip() else None
 
-            if factor_values_set:
-                assert factor_values is not None
-                seen: set[int] = set()
-                for factor_id, _ in factor_values:
-                    if factor_id in seen:
-                        raise ValidationError(
-                            f"Factor {factor_id} is assigned more than once in the same request"
-                        )
-                    seen.add(factor_id)
-                table.validate_factor_value_pairs(list(factor_values))
-                rule.factor_values = [
-                    RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
-                    for factor_id, factor_value_id in factor_values
-                ]
+        if factor_values_set:
+            assert factor_values is not None
+            seen: set[int] = set()
+            for factor_id, _ in factor_values:
+                if factor_id in seen:
+                    raise ValidationError(
+                        f"Factor {factor_id} is assigned more than once in the same request"
+                    )
+                seen.add(factor_id)
+            table.validate_factor_value_pairs(list(factor_values))
+            rule.factor_values = [
+                RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
+                for factor_id, factor_value_id in factor_values
+            ]
 
-            await uow.rules.save(rule)
+        await uow.rules.save(rule)
 
-            if factor_values_set or output is not None:
-                applied = await apply_rule(uow.combinations, uow.rules, rule)
-                return RuleRef(
-                    id=applied.rule_id,
-                    matched_count=applied.matched_count,
-                    applied_at=applied.applied_at,
-                )
+        if factor_values_set or output is not None:
+            applied = await apply_rule(uow.combinations, uow.rules, rule)
             return RuleRef(
-                id=rule.id, matched_count=rule.matched_count, applied_at=rule.applied_at
+                id=applied.rule_id,
+                matched_count=applied.matched_count,
+                applied_at=applied.applied_at,
             )
+        return RuleRef(
+            id=rule.id, matched_count=rule.matched_count, applied_at=rule.applied_at
+        )
 
-    async def delete_rule(self, table_id: int, rule_id: int) -> None:
+    @uow
+    async def delete_rule(
+        self, table_id: int, rule_id: int, *, uow: UnitOfWork
+    ) -> None:
         """Delete a rule. Combinations it last patched keep their current
         status/output (see spec 005's "no revert on delete").
 
         Raises:
             NotFoundError: if `table_id` or `rule_id` doesn't exist.
         """
-        async with self._database.unit_of_work() as uow:
-            # Deleting a rule leaves whatever status/output it last set on
-            # combinations untouched — see spec 005's "no revert on delete".
-            deleted = await uow.rules.delete(table_id, rule_id)
-            if not deleted:
-                raise NotFoundError(f"Rule {rule_id} not found")
+        # Deleting a rule leaves whatever status/output it last set on
+        # combinations untouched — see spec 005's "no revert on delete".
+        deleted = await uow.rules.delete(table_id, rule_id)
+        if not deleted:
+            raise NotFoundError(f"Rule {rule_id} not found")
 
+    @uow
     async def reorder_rules(
-        self, table_id: int, ordered_rule_ids: tuple[int, ...] = ()
+        self,
+        table_id: int,
+        ordered_rule_ids: tuple[int, ...] = (),
+        *,
+        uow: UnitOfWork,
     ) -> ReapplyRulesResult:
         """Persists a complete new rule order for a table and immediately
         replays every rule in that order (spec 008) — a reorder is a
@@ -194,33 +207,35 @@ class RulesUseCases:
             InvariantViolationError: if `ordered_rule_ids` isn't a
                 permutation of the table's existing rule ids.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
 
-            existing = await uow.rules.list_for_table(table_id)
-            requested_ids = list(ordered_rule_ids)
-            if len(requested_ids) != len(set(requested_ids)) or set(requested_ids) != {
-                r.id for r in existing
-            }:
-                raise InvariantViolationError(
-                    f"The given rule order must contain every rule of decision "
-                    f"table {table_id} exactly once"
-                )
+        existing = await uow.rules.list_for_table(table_id)
+        requested_ids = list(ordered_rule_ids)
+        if len(requested_ids) != len(set(requested_ids)) or set(requested_ids) != {
+            r.id for r in existing
+        }:
+            raise InvariantViolationError(
+                f"The given rule order must contain every rule of decision "
+                f"table {table_id} exactly once"
+            )
 
-            by_id = {r.id: r for r in existing}
-            for position, rid in enumerate(requested_ids):
-                by_id[rid].order_index = position
-                await uow.rules.save(by_id[rid])
+        by_id = {r.id: r for r in existing}
+        for position, rid in enumerate(requested_ids):
+            by_id[rid].order_index = position
+            await uow.rules.save(by_id[rid])
 
-            results = [
-                await apply_rule(uow.combinations, uow.rules, by_id[rid])
-                for rid in requested_ids
-            ]
-            return ReapplyRulesResult(results=results)
+        results = [
+            await apply_rule(uow.combinations, uow.rules, by_id[rid])
+            for rid in requested_ids
+        ]
+        return ReapplyRulesResult(results=results)
 
-    async def reapply_rules(self, table_id: int) -> ReapplyRulesResult:
+    @uow
+    async def reapply_rules(
+        self, table_id: int, *, uow: UnitOfWork
+    ) -> ReapplyRulesResult:
         """Replays every rule for a table against its current combinations,
         in creation order, so a later rule's output wins on any row both it
         and an earlier rule match (see spec 005). Invoked automatically by
@@ -232,16 +247,15 @@ class RulesUseCases:
         Raises:
             NotFoundError: if `table_id` doesn't exist.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
 
-            rules = await uow.rules.list_for_table(table_id)
-            results = [
-                await apply_rule(uow.combinations, uow.rules, rule) for rule in rules
-            ]
-            return ReapplyRulesResult(results=results)
+        rules = await uow.rules.list_for_table(table_id)
+        results = [
+            await apply_rule(uow.combinations, uow.rules, rule) for rule in rules
+        ]
+        return ReapplyRulesResult(results=results)
 
     # --- Reads ------------------------------------------------------------------
 

@@ -2,10 +2,12 @@
 plus its child `Factor`/`FactorValue` entities (see `entities.py` for why
 factors/values are part of this aggregate rather than modules of their
 own). Write methods open their own transaction via `self._database.
-unit_of_work()`; read methods call straight through to `self._database.
-tables_queries` — no scope is ever injected from outside, and a method is
-free to open more than one transaction if it genuinely has
-independent-commit steps.
+unit_of_work()` — most through the `@uow` decorator (see `shared/uow.py`),
+since their whole body is that one transaction; `create_decision_table`
+writes it out by hand since it validates before opening one. Read methods
+call straight through to `self._database.tables_queries` — no scope is
+ever injected from outside, and a method is free to open more than one
+transaction if it genuinely has independent-commit steps.
 """
 
 from dataclasses import dataclass
@@ -13,6 +15,8 @@ from dataclasses import dataclass
 from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
+from app.shared.ports.unit_of_work import UnitOfWork
+from app.shared.uow import uow
 from app.tables.entities import DecisionTable
 from app.tables.ports.decision_table_queries import (
     DecisionTableDTO,
@@ -81,12 +85,15 @@ class TablesUseCases:
                 id=table.id, name=table.name, description=table.description
             )
 
+    @uow
     async def update_decision_table(
         self,
         table_id: int,
         name: str | None = None,
         description: str | None = None,
         description_set: bool = False,
+        *,
+        uow: UnitOfWork,
     ) -> DecisionTableRef:
         """Update a decision table's name and/or description.
 
@@ -97,31 +104,33 @@ class TablesUseCases:
             NotFoundError: if `table_id` doesn't exist.
             ValidationError: if `name` is given but blank.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
 
-            if name is not None:
-                if not name.strip():
-                    raise ValidationError("name must not be empty")
-                table.name = name
-            if description_set:
-                table.description = description
+        if name is not None:
+            if not name.strip():
+                raise ValidationError("name must not be empty")
+            table.name = name
+        if description_set:
+            table.description = description
 
-            await uow.tables.save(table)
-            return DecisionTableRef(
-                id=table.id, name=table.name, description=table.description
-            )
+        await uow.tables.save(table)
+        return DecisionTableRef(
+            id=table.id, name=table.name, description=table.description
+        )
 
-    async def delete_decision_table(self, table_id: int) -> None:
+    @uow
+    async def delete_decision_table(self, table_id: int, *, uow: UnitOfWork) -> None:
         """Delete a decision table. A no-op if `table_id` doesn't exist."""
-        async with self._database.unit_of_work() as uow:
-            await uow.tables.delete(table_id)
+        await uow.tables.delete(table_id)
 
     # --- Factors --------------------------------------------------------------
 
-    async def add_factor(self, table_id: int, name: str) -> FactorRef:
+    @uow
+    async def add_factor(
+        self, table_id: int, name: str, *, uow: UnitOfWork
+    ) -> FactorRef:
         """Add a new factor to a decision table.
 
         Raises:
@@ -130,25 +139,25 @@ class TablesUseCases:
             InvariantViolationError: if `name` is already used in this
                 table, or the table has a generation job running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            factor = table.add_factor(name)
-            await uow.tables.save(table)
-            assert factor.id is not None
-            return FactorRef(
-                id=factor.id, name=factor.name, order_index=factor.order_index
-            )
+        factor = table.add_factor(name)
+        await uow.tables.save(table)
+        assert factor.id is not None
+        return FactorRef(id=factor.id, name=factor.name, order_index=factor.order_index)
 
+    @uow
     async def update_factor(
         self,
         table_id: int,
         factor_id: int,
         name: str | None = None,
         order_index: int | None = None,
+        *,
+        uow: UnitOfWork,
     ) -> FactorRef:
         """Update a factor's name and/or order index.
 
@@ -159,32 +168,32 @@ class TablesUseCases:
                 factor in this table, or the table has a generation job
                 running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            factor = table.get_factor(factor_id)
-            if factor is None:
-                raise NotFoundError(f"Factor {factor_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        factor = table.get_factor(factor_id)
+        if factor is None:
+            raise NotFoundError(f"Factor {factor_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            if name is not None:
-                if not name.strip():
-                    raise ValidationError("name must not be empty")
-                if any(f.name == name and f.id != factor.id for f in table.factors):
-                    raise InvariantViolationError(
-                        f"Factor name {name!r} is already used in this table"
-                    )
-                factor.name = name
-            if order_index is not None:
-                factor.order_index = order_index
+        if name is not None:
+            if not name.strip():
+                raise ValidationError("name must not be empty")
+            if any(f.name == name and f.id != factor.id for f in table.factors):
+                raise InvariantViolationError(
+                    f"Factor name {name!r} is already used in this table"
+                )
+            factor.name = name
+        if order_index is not None:
+            factor.order_index = order_index
 
-            await uow.tables.save(table)
-            return FactorRef(
-                id=factor.id, name=factor.name, order_index=factor.order_index
-            )
+        await uow.tables.save(table)
+        return FactorRef(id=factor.id, name=factor.name, order_index=factor.order_index)
 
-    async def delete_factor(self, table_id: int, factor_id: int) -> None:
+    @uow
+    async def delete_factor(
+        self, table_id: int, factor_id: int, *, uow: UnitOfWork
+    ) -> None:
         """Delete a factor, cascading to every combination and rule for its
         table (both may reference the deleted factor).
 
@@ -192,29 +201,29 @@ class TablesUseCases:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
             InvariantViolationError: if the table has a generation job running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            factor = table.get_factor(factor_id)
-            if factor is None:
-                raise NotFoundError(f"Factor {factor_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        factor = table.get_factor(factor_id)
+        if factor is None:
+            raise NotFoundError(f"Factor {factor_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            table.factors = [f for f in table.factors if f.id != factor.id]
-            await uow.tables.save(table)
-            # Deleting a factor invalidates every existing combination's
-            # signature (see spec 001) — cascade the whole set for this table.
-            await uow.combinations.delete_all_for_table(table_id)
-            # A rule's assignment may reference the deleted factor; rather
-            # than silently narrowing its meaning, invalidate every rule for
-            # this table too (see spec 005).
-            await uow.rules.delete_all_for_table(table_id)
+        table.factors = [f for f in table.factors if f.id != factor.id]
+        await uow.tables.save(table)
+        # Deleting a factor invalidates every existing combination's
+        # signature (see spec 001) — cascade the whole set for this table.
+        await uow.combinations.delete_all_for_table(table_id)
+        # A rule's assignment may reference the deleted factor; rather
+        # than silently narrowing its meaning, invalidate every rule for
+        # this table too (see spec 005).
+        await uow.rules.delete_all_for_table(table_id)
 
     # --- Factor values ----------------------------------------------------------
 
+    @uow
     async def add_factor_value(
-        self, table_id: int, factor_id: int, value: str
+        self, table_id: int, factor_id: int, value: str, *, uow: UnitOfWork
     ) -> FactorValueRef:
         """Add a new value to a factor.
 
@@ -224,22 +233,22 @@ class TablesUseCases:
             InvariantViolationError: if `value` already exists on this
                 factor, or the table has a generation job running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            factor = table.get_factor(factor_id)
-            if factor is None:
-                raise NotFoundError(f"Factor {factor_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        factor = table.get_factor(factor_id)
+        if factor is None:
+            raise NotFoundError(f"Factor {factor_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            added = factor.add_value(value)
-            await uow.tables.save(table)
-            assert added.id is not None
-            return FactorValueRef(
-                id=added.id, value=added.value, order_index=added.order_index
-            )
+        added = factor.add_value(value)
+        await uow.tables.save(table)
+        assert added.id is not None
+        return FactorValueRef(
+            id=added.id, value=added.value, order_index=added.order_index
+        )
 
+    @uow
     async def update_factor_value(
         self,
         table_id: int,
@@ -247,6 +256,8 @@ class TablesUseCases:
         value_id: int,
         value: str | None = None,
         order_index: int | None = None,
+        *,
+        uow: UnitOfWork,
     ) -> FactorValueRef:
         """Update a factor value's value and/or order index.
 
@@ -257,36 +268,36 @@ class TablesUseCases:
                 value on this factor, or the table has a generation job
                 running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            factor = table.get_factor(factor_id)
-            if factor is None:
-                raise NotFoundError(f"Factor {factor_id} not found")
-            existing = factor.get_value(value_id)
-            if existing is None:
-                raise NotFoundError(f"Factor value {value_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        factor = table.get_factor(factor_id)
+        if factor is None:
+            raise NotFoundError(f"Factor {factor_id} not found")
+        existing = factor.get_value(value_id)
+        if existing is None:
+            raise NotFoundError(f"Factor value {value_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            if value is not None:
-                if not value.strip():
-                    raise ValidationError("value must not be empty")
-                if any(v.value == value and v.id != existing.id for v in factor.values):
-                    raise InvariantViolationError(
-                        f"Value {value!r} is already used in this factor"
-                    )
-                existing.value = value
-            if order_index is not None:
-                existing.order_index = order_index
+        if value is not None:
+            if not value.strip():
+                raise ValidationError("value must not be empty")
+            if any(v.value == value and v.id != existing.id for v in factor.values):
+                raise InvariantViolationError(
+                    f"Value {value!r} is already used in this factor"
+                )
+            existing.value = value
+        if order_index is not None:
+            existing.order_index = order_index
 
-            await uow.tables.save(table)
-            return FactorValueRef(
-                id=existing.id, value=existing.value, order_index=existing.order_index
-            )
+        await uow.tables.save(table)
+        return FactorValueRef(
+            id=existing.id, value=existing.value, order_index=existing.order_index
+        )
 
+    @uow
     async def delete_factor_value(
-        self, table_id: int, factor_id: int, value_id: int
+        self, table_id: int, factor_id: int, value_id: int, *, uow: UnitOfWork
     ) -> None:
         """Delete a factor value, cascading to every combination and rule
         for its table (both may reference the deleted value).
@@ -295,26 +306,25 @@ class TablesUseCases:
             NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
             InvariantViolationError: if the table has a generation job running.
         """
-        async with self._database.unit_of_work() as uow:
-            table = await uow.tables.get(table_id)
-            if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            factor = table.get_factor(factor_id)
-            if factor is None:
-                raise NotFoundError(f"Factor {factor_id} not found")
-            value = factor.get_value(value_id)
-            if value is None:
-                raise NotFoundError(f"Factor value {value_id} not found")
-            await ensure_not_generating(uow.jobs, table_id)
+        table = await uow.tables.get(table_id)
+        if table is None:
+            raise NotFoundError(f"Decision table {table_id} not found")
+        factor = table.get_factor(factor_id)
+        if factor is None:
+            raise NotFoundError(f"Factor {factor_id} not found")
+        value = factor.get_value(value_id)
+        if value is None:
+            raise NotFoundError(f"Factor value {value_id} not found")
+        await ensure_not_generating(uow.jobs, table_id)
 
-            factor.values = [v for v in factor.values if v.id != value.id]
-            await uow.tables.save(table)
-            # Same rationale as delete_factor: invalidates every existing
-            # combination's signature for this table.
-            await uow.combinations.delete_all_for_table(table_id)
-            # Same rationale as delete_factor: a rule's assignment may
-            # reference the deleted value (see spec 005).
-            await uow.rules.delete_all_for_table(table_id)
+        factor.values = [v for v in factor.values if v.id != value.id]
+        await uow.tables.save(table)
+        # Same rationale as delete_factor: invalidates every existing
+        # combination's signature for this table.
+        await uow.combinations.delete_all_for_table(table_id)
+        # Same rationale as delete_factor: a rule's assignment may
+        # reference the deleted value (see spec 005).
+        await uow.rules.delete_all_for_table(table_id)
 
     # --- Reads ------------------------------------------------------------------
 
