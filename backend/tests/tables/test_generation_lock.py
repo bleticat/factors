@@ -4,8 +4,8 @@ succeed again once the job reaches a terminal state."""
 
 import pytest
 
-from app.generation.errors import GenerationInProgressError
 from app.generation.use_cases import GenerationUseCases
+from app.shared.errors import InvariantViolationError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
@@ -22,7 +22,7 @@ async def test_add_factor_rejected_while_job_pending(database):
         table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
     )  # leaves job 'pending'
 
-    with pytest.raises(GenerationInProgressError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).add_factor(table_id=table_id, name="New factor")
 
 
@@ -33,7 +33,7 @@ async def test_update_factor_rejected_while_job_pending(database):
         table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
     )
 
-    with pytest.raises(GenerationInProgressError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).update_factor(
             table_id=table_id, factor_id=browser_id, name="X"
         )
@@ -46,7 +46,7 @@ async def test_delete_factor_rejected_while_job_pending(database):
         table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
     )
 
-    with pytest.raises(GenerationInProgressError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).delete_factor(
             table_id=table_id, factor_id=browser_id
         )
@@ -59,7 +59,7 @@ async def test_add_factor_value_rejected_while_job_pending(database):
         table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
     )
 
-    with pytest.raises(GenerationInProgressError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).add_factor_value(
             table_id=table_id, factor_id=browser_id, value="Edge"
         )

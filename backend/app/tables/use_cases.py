@@ -10,14 +10,10 @@ independent-commit steps.
 
 from dataclasses import dataclass
 
-from app.shared.errors import NotFoundError, ValidationError
+from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 from app.tables.entities import DecisionTable
-from app.tables.errors import (
-    DuplicateFactorNameError,
-    DuplicateFactorValueError,
-)
 from app.tables.ports.decision_table_queries import (
     DecisionTableDTO,
     DecisionTableSummaryDTO,
@@ -131,8 +127,8 @@ class TablesUseCases:
         Raises:
             NotFoundError: if `table_id` doesn't exist.
             ValidationError: if `name` is blank.
-            DuplicateFactorNameError: if `name` is already used in this table.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if `name` is already used in this
+                table, or the table has a generation job running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -159,9 +155,9 @@ class TablesUseCases:
         Raises:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
             ValidationError: if `name` is given but blank.
-            DuplicateFactorNameError: if `name` is already used by another
-                factor in this table.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if `name` is already used by another
+                factor in this table, or the table has a generation job
+                running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -176,7 +172,9 @@ class TablesUseCases:
                 if not name.strip():
                     raise ValidationError("name must not be empty")
                 if any(f.name == name and f.id != factor.id for f in table.factors):
-                    raise DuplicateFactorNameError(name)
+                    raise InvariantViolationError(
+                        f"Factor name {name!r} is already used in this table"
+                    )
                 factor.name = name
             if order_index is not None:
                 factor.order_index = order_index
@@ -192,7 +190,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if the table has a generation job running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -223,8 +221,8 @@ class TablesUseCases:
         Raises:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
             ValidationError: if `value` is blank.
-            DuplicateFactorValueError: if `value` already exists on this factor.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if `value` already exists on this
+                factor, or the table has a generation job running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -255,9 +253,9 @@ class TablesUseCases:
         Raises:
             NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
             ValidationError: if `value` is given but blank.
-            DuplicateFactorValueError: if `value` is already used by another
-                value on this factor.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if `value` is already used by another
+                value on this factor, or the table has a generation job
+                running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -275,7 +273,9 @@ class TablesUseCases:
                 if not value.strip():
                     raise ValidationError("value must not be empty")
                 if any(v.value == value and v.id != existing.id for v in factor.values):
-                    raise DuplicateFactorValueError(value)
+                    raise InvariantViolationError(
+                        f"Value {value!r} is already used in this factor"
+                    )
                 existing.value = value
             if order_index is not None:
                 existing.order_index = order_index
@@ -293,7 +293,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
-            GenerationInProgressError: if the table has a generation job running.
+            InvariantViolationError: if the table has a generation job running.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)

@@ -1,10 +1,7 @@
 """Internal helper logic `combinations.queries` delegates to. Not part of
 the module's public request/response surface."""
 
-from app.tables.errors import (
-    UnknownFactorInFilterError,
-    UnknownFactorValueInFilterError,
-)
+from app.shared.errors import ValidationError
 from app.tables.ports.decision_table_queries import DecisionTableDTO
 
 
@@ -17,8 +14,7 @@ def validate_factor_value_pairs(
     write-side repository access).
 
     Raises:
-        UnknownFactorInFilterError: if a pair names a factor not on `table`.
-        UnknownFactorValueInFilterError: if a pair names a value not on that factor.
+        ValidationError: if a pair names a factor or value not on `table`.
 
     >>> from app.tables.ports.decision_table_queries import FactorDTO, FactorValueDTO
     >>> table = DecisionTableDTO(
@@ -30,12 +26,16 @@ def validate_factor_value_pairs(
     >>> validate_factor_value_pairs(table, [(99, 100)])
     Traceback (most recent call last):
         ...
-    app.tables.errors.UnknownFactorInFilterError: Factor 99 does not belong to decision table 1
+    app.shared.errors.ValidationError: Factor 99 does not belong to decision table 1
     """
     factors_by_id = {f.id: f for f in table.factors}
     for factor_id, factor_value_id in pairs:
         factor = factors_by_id.get(factor_id)
         if factor is None:
-            raise UnknownFactorInFilterError(factor_id, table.id)
+            raise ValidationError(
+                f"Factor {factor_id} does not belong to decision table {table.id}"
+            )
         if not any(v.id == factor_value_id for v in factor.values):
-            raise UnknownFactorValueInFilterError(factor_value_id, factor_id)
+            raise ValidationError(
+                f"Factor value {factor_value_id} does not belong to factor {factor_id}"
+            )

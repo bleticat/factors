@@ -1,7 +1,6 @@
 import pytest
 
-from app.shared.errors import NotFoundError, ValidationError
-from app.tables.errors import DuplicateFactorNameError
+from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
 
@@ -26,7 +25,7 @@ async def test_add_factor_rejects_empty_name(database):
 async def test_add_factor_rejects_duplicate_name_within_table(database):
     table_id = await create_table(database)
     await TablesUseCases(database).add_factor(table_id=table_id, name="Browser")
-    with pytest.raises(DuplicateFactorNameError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).add_factor(table_id=table_id, name="Browser")
 
 

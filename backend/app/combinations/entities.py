@@ -11,7 +11,7 @@ persistence.
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from app.combinations.errors import InvalidCombinationStatusError
+from app.shared.errors import ValidationError
 
 
 class CombinationStatus(StrEnum):
@@ -27,17 +27,17 @@ def parse_status(value: str) -> CombinationStatus:
     <CombinationStatus.POSSIBLE: 'possible'>
 
     Raises:
-        InvalidCombinationStatusError: if `value` isn't a valid status.
+        ValidationError: if `value` isn't a valid status.
 
     >>> parse_status("bogus")
     Traceback (most recent call last):
         ...
-    app.combinations.errors.InvalidCombinationStatusError: 'bogus' is not a valid combination status
+    app.shared.errors.ValidationError: 'bogus' is not a valid combination status
     """
     try:
         return CombinationStatus(value)
     except ValueError as exc:
-        raise InvalidCombinationStatusError(value) from exc
+        raise ValidationError(f"{value!r} is not a valid combination status") from exc
 
 
 @dataclass

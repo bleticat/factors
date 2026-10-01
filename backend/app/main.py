@@ -12,7 +12,7 @@ from app.generation.api.routes import router as generation_router
 from app.generation.startup_sweep import sweep_stale_generation_jobs
 from app.rules.api.routes import router as rules_router
 from app.shared.adapters.sqlalchemy_database import SqlAlchemyDatabase, create_engine
-from app.shared.errors import NotFoundError, ValidationError
+from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.tables.api.routes import router as tables_router
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,12 @@ def create_app() -> FastAPI:
         _request: Request, exc: ValidationError
     ) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(InvariantViolationError)
+    async def handle_invariant_violation(
+        _request: Request, exc: InvariantViolationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     # `tables`, `rules`, `combinations`, and `generation` each contribute a
     # disjoint set of paths under the same `/api/decision-tables` prefix —

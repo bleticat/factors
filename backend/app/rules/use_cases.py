@@ -10,10 +10,9 @@ from app.combinations.ports.combination_queries import (
 )
 from app.combinations.ports.combination_repository import FactorValueAssignment
 from app.rules.entities import Rule, RuleAssignment
-from app.rules.errors import InvalidRuleOrderError
 from app.rules.ports.rule_queries import RuleDTO
 from app.rules.service import RuleApplyRef, apply_rule
-from app.shared.errors import NotFoundError, ValidationError
+from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 
@@ -51,12 +50,9 @@ class RulesUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `output` is blank, or if `factor_values`
-                names the same factor twice.
-            UnknownFactorInFilterError: if `factor_values` names a factor not
-                on this table.
-            UnknownFactorValueInFilterError: if `factor_values` names a value
-                not on that factor.
+            ValidationError: if `output` is blank, `factor_values` names the
+                same factor twice, or names a factor or value not on this
+                table.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -121,12 +117,9 @@ class RulesUseCases:
 
         Raises:
             NotFoundError: if `table_id` or `rule_id` doesn't exist.
-            ValidationError: if `output` is given but blank, or if
-                `factor_values` names the same factor twice.
-            UnknownFactorInFilterError: if `factor_values` names a factor not
+            ValidationError: if `output` is given but blank, `factor_values`
+                names the same factor twice, or names a factor or value not
                 on this table.
-            UnknownFactorValueInFilterError: if `factor_values` names a value
-                not on that factor.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -198,8 +191,8 @@ class RulesUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            InvalidRuleOrderError: if `ordered_rule_ids` isn't a permutation
-                of the table's existing rule ids.
+            InvariantViolationError: if `ordered_rule_ids` isn't a
+                permutation of the table's existing rule ids.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -211,7 +204,10 @@ class RulesUseCases:
             if len(requested_ids) != len(set(requested_ids)) or set(requested_ids) != {
                 r.id for r in existing
             }:
-                raise InvalidRuleOrderError(table_id)
+                raise InvariantViolationError(
+                    f"The given rule order must contain every rule of decision "
+                    f"table {table_id} exactly once"
+                )
 
             by_id = {r.id: r for r in existing}
             for position, rid in enumerate(requested_ids):

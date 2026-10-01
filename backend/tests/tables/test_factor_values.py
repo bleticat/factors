@@ -1,7 +1,6 @@
 import pytest
 
-from app.shared.errors import NotFoundError, ValidationError
-from app.tables.errors import DuplicateFactorValueError
+from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
 
@@ -30,7 +29,7 @@ async def test_add_factor_value_rejects_duplicate_within_factor(database):
     await TablesUseCases(database).add_factor_value(
         table_id=table_id, factor_id=factor_id, value="Chrome"
     )
-    with pytest.raises(DuplicateFactorValueError):
+    with pytest.raises(InvariantViolationError):
         await TablesUseCases(database).add_factor_value(
             table_id=table_id, factor_id=factor_id, value="Chrome"
         )

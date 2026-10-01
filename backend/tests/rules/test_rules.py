@@ -9,10 +9,6 @@ from app.rules.ports.rule_queries import RuleValueDTO
 from app.rules.use_cases import RulesUseCases
 from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import PageRequest
-from app.tables.errors import (
-    UnknownFactorInFilterError,
-    UnknownFactorValueInFilterError,
-)
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import (
     add_factor_with_values,
@@ -199,7 +195,7 @@ async def test_create_rule_rejects_empty_output(database):
 async def test_create_rule_rejects_unknown_factor(database):
     fixture = await build_standard_table(database)
     table_id = fixture["table_id"]
-    with pytest.raises(UnknownFactorInFilterError):
+    with pytest.raises(ValidationError):
         await RulesUseCases(database).create_rule(
             table_id=table_id, factor_values=((999, 1),), output="x"
         )
@@ -210,7 +206,7 @@ async def test_create_rule_rejects_value_not_belonging_to_factor(database):
     table_id = fixture["table_id"]
     browser_id = fixture["browser_id"]
     os_value_id = fixture["os_values"][0]
-    with pytest.raises(UnknownFactorValueInFilterError):
+    with pytest.raises(ValidationError):
         await RulesUseCases(database).create_rule(
             table_id=table_id,
             factor_values=((browser_id, os_value_id),),

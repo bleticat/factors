@@ -3,10 +3,6 @@ import pytest
 from app.combinations.use_cases import CombinationsUseCases
 from app.shared.errors import ValidationError
 from app.shared.pagination import PageRequest
-from app.tables.errors import (
-    UnknownFactorInFilterError,
-    UnknownFactorValueInFilterError,
-)
 from tests.helpers import (
     build_standard_table,
     create_table,
@@ -126,7 +122,7 @@ async def test_assignment_pair_with_unknown_factor_is_rejected(database):
     table_id = fixture["table_id"]
     await generate_and_wait(database, table_id)
 
-    with pytest.raises(UnknownFactorInFilterError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
             table_id=table_id, assignment=((999, 1),)
         )
@@ -139,7 +135,7 @@ async def test_assignment_pair_with_value_not_belonging_to_factor_is_rejected(da
     os_value_id = fixture["os_values"][0]
     await generate_and_wait(database, table_id)
 
-    with pytest.raises(UnknownFactorValueInFilterError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
             table_id=table_id, assignment=((browser_id, os_value_id),)
         )

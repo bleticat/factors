@@ -1,8 +1,7 @@
 import pytest
 
-from app.combinations.errors import InvalidCombinationStatusError
 from app.combinations.use_cases import CombinationsUseCases
-from app.shared.errors import NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from tests.helpers import build_standard_table, generate_and_wait
 
 
@@ -52,7 +51,7 @@ async def test_patch_combination_rejects_invalid_status(database):
     await generate_and_wait(database, table_id)
     combination_id = await _first_combination_id(database, table_id)
 
-    with pytest.raises(InvalidCombinationStatusError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).patch_combination(
             table_id=table_id, combination_id=combination_id, status="bogus"
         )

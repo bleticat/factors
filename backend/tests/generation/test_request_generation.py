@@ -1,13 +1,8 @@
 import pytest
 
 from app.combinations.use_cases import CombinationsUseCases
-from app.generation.errors import (
-    CombinationCapExceededError,
-    FactorHasNoValuesError,
-    GenerationAlreadyInProgressError,
-    NoFactorsError,
-)
 from app.generation.use_cases import GenerationUseCases
+from app.shared.errors import InvariantViolationError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
@@ -28,7 +23,7 @@ async def test_request_generation_computes_projected_total(database):
 
 async def test_request_generation_rejects_table_with_no_factors(database):
     table_id = await create_table(database)
-    with pytest.raises(NoFactorsError):
+    with pytest.raises(InvariantViolationError):
         await GenerationUseCases(database).request_generation(
             table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
         )
@@ -38,7 +33,7 @@ async def test_request_generation_rejects_factor_with_no_values(database):
     table_id = await create_table(database)
 
     await TablesUseCases(database).add_factor(table_id=table_id, name="Browser")
-    with pytest.raises(FactorHasNoValuesError):
+    with pytest.raises(InvariantViolationError):
         await GenerationUseCases(database).request_generation(
             table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
         )
@@ -50,7 +45,7 @@ async def test_request_generation_rejects_when_projection_exceeds_cap(database):
     await add_factor_with_values(database, table_id, "A", ["1", "2", "3", "4"])
     await add_factor_with_values(database, table_id, "B", ["1", "2", "3", "4"])
 
-    with pytest.raises(CombinationCapExceededError):
+    with pytest.raises(InvariantViolationError):
         await GenerationUseCases(database).request_generation(
             table_id=table_id, max_combinations=10
         )
@@ -68,7 +63,7 @@ async def test_request_generation_rejects_second_request_while_first_in_flight(
     await GenerationUseCases(database).request_generation(
         table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
     )
-    with pytest.raises(GenerationAlreadyInProgressError):
+    with pytest.raises(InvariantViolationError):
         await GenerationUseCases(database).request_generation(
             table_id=table_id, max_combinations=DEFAULT_TEST_MAX_COMBINATIONS
         )

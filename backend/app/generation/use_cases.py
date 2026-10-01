@@ -12,15 +12,9 @@ from app.generation.entities import (
     GenerationJob,
     GenerationJobStatus,
 )
-from app.generation.errors import (
-    CombinationCapExceededError,
-    FactorHasNoValuesError,
-    GenerationAlreadyInProgressError,
-    NoFactorsError,
-)
 from app.generation.ports.generation_job_queries import GenerationJobDTO
 from app.generation.service import GenerationJobRef, to_ref
-from app.shared.errors import NotFoundError
+from app.shared.errors import InvariantViolationError, NotFoundError
 from app.shared.ports.database import Database
 
 
@@ -42,28 +36,34 @@ class GenerationUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            NoFactorsError: if the table has no factors.
-            FactorHasNoValuesError: if any factor has no values.
-            GenerationAlreadyInProgressError: if a job is already active for
-                this table.
-            CombinationCapExceededError: if the projected combination count
-                exceeds `max_combinations`.
+            InvariantViolationError: if the table has no factors, any factor
+                has no values, a job is already active for this table, or
+                the projected combination count exceeds `max_combinations`.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
             if table is None:
                 raise NotFoundError(f"Decision table {table_id} not found")
             if not table.factors:
-                raise NoFactorsError(table_id)
+                raise InvariantViolationError(
+                    f"Decision table {table_id} has no factors"
+                )
             for factor in table.factors:
                 if not factor.values:
-                    raise FactorHasNoValuesError(factor.id or 0)
+                    raise InvariantViolationError(
+                        f"Factor {factor.id or 0} has no values"
+                    )
             if await uow.jobs.has_active_job(table_id):
-                raise GenerationAlreadyInProgressError(table_id)
+                raise InvariantViolationError(
+                    f"Decision table {table_id} already has a generation job in progress"
+                )
 
             total = total_combinations([len(f.values) for f in table.factors])
             if total > max_combinations:
-                raise CombinationCapExceededError(total, max_combinations)
+                raise InvariantViolationError(
+                    f"Projected combination count {total} exceeds the maximum "
+                    f"of {max_combinations}"
+                )
 
             # Delete-and-recreate regeneration semantics (v1 scope, see spec 002).
             await uow.combinations.delete_all_for_table(table_id)
@@ -83,13 +83,13 @@ class GenerationUseCases:
 
         Raises:
             NotFoundError: if `job_id` doesn't exist.
-            InvalidGenerationJobTransitionError: if the job is already terminal.
+            InvariantViolationError: if the job is already terminal.
         """
         async with self._database.unit_of_work() as uow:
             job = await uow.jobs.get(job_id)
             if job is None:
                 raise NotFoundError(f"Generation job {job_id} not found")
-            job.cancel()  # raises InvalidGenerationJobTransitionError if already terminal
+            job.cancel()  # raises InvariantViolationError if already terminal
             await uow.jobs.save(job)
             return to_ref(job)
 

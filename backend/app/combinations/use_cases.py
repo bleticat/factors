@@ -81,7 +81,7 @@ class CombinationsUseCases:
 
         Raises:
             NotFoundError: if `table_id`/`combination_id` doesn't exist.
-            InvalidCombinationStatusError: if `status` isn't a valid status.
+            ValidationError: if `status` isn't a valid status.
         """
         async with self._database.unit_of_work() as uow:
             combination = await uow.combinations.get(table_id, combination_id)
@@ -114,12 +114,9 @@ class CombinationsUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            UnknownFactorInFilterError: if a filter pair names a factor not on
-                this table.
-            UnknownFactorValueInFilterError: if a filter pair names a value
-                not on that factor.
-            InvalidCombinationStatusError: if a status string in `filter`/`patch`
-                isn't a valid status.
+            ValidationError: if a filter pair names a factor or value not on
+                this table, or a status string in `filter`/`patch` isn't a
+                valid status.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -165,11 +162,8 @@ class CombinationsUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            UnknownFactorInFilterError: if a filter pair names a factor not on
-                this table.
-            UnknownFactorValueInFilterError: if a filter pair names a value
-                not on that factor.
-            InvalidCombinationStatusError: if `status` isn't a valid status.
+            ValidationError: if a filter pair names a factor or value not on
+                this table, or `status` isn't a valid status.
         """
         table = await self._database.tables_queries.get(table_id)
         if table is None:
@@ -203,11 +197,8 @@ class CombinationsUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `assignment` names the same factor twice.
-            UnknownFactorInFilterError: if `assignment` names a factor not on
-                this table.
-            UnknownFactorValueInFilterError: if `assignment` names a value
-                not on that factor.
+            ValidationError: if `assignment` names the same factor twice, or
+                names a factor or value not on this table.
         """
         table = await self._database.tables_queries.get(table_id)
         if table is None:

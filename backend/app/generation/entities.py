@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from app.generation.errors import InvalidGenerationJobTransitionError
+from app.shared.errors import InvariantViolationError
 
 
 class GenerationJobStatus(StrEnum):
@@ -51,11 +51,12 @@ class GenerationJob:
         completing the job once the cursor reaches `total_combinations`.
 
         Raises:
-            InvalidGenerationJobTransitionError: if the job isn't `running`.
+            InvariantViolationError: if the job isn't `running`.
         """
         if self.status != GenerationJobStatus.RUNNING:
-            raise InvalidGenerationJobTransitionError(
-                self.id or 0, str(self.status), "batch-progress"
+            raise InvariantViolationError(
+                f"Generation job {self.id or 0} cannot go from {self.status} "
+                "to batch-progress"
             )
         self.cursor = new_cursor
         self.created_count += rows_created
@@ -71,11 +72,11 @@ class GenerationJob:
         """Cancel the job.
 
         Raises:
-            InvalidGenerationJobTransitionError: if the job isn't active
-                (already terminal).
+            InvariantViolationError: if the job isn't active (already terminal).
         """
         if not self.is_active():
-            raise InvalidGenerationJobTransitionError(
-                self.id or 0, str(self.status), str(GenerationJobStatus.CANCELLED)
+            raise InvariantViolationError(
+                f"Generation job {self.id or 0} cannot go from {self.status} "
+                f"to {GenerationJobStatus.CANCELLED}"
             )
         self.status = GenerationJobStatus.CANCELLED

@@ -1,9 +1,8 @@
 import pytest
 
 from app.combinations.use_cases import CombinationsUseCases
-from app.rules.errors import InvalidRuleOrderError
 from app.rules.use_cases import RulesUseCases
-from app.shared.errors import NotFoundError
+from app.shared.errors import InvariantViolationError, NotFoundError
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
@@ -76,7 +75,7 @@ async def test_reorder_rejects_a_list_missing_a_rule(database):
         output="b",
     )
 
-    with pytest.raises(InvalidRuleOrderError):
+    with pytest.raises(InvariantViolationError):
         await RulesUseCases(database).reorder_rules(
             table_id=table_id, ordered_rule_ids=(a.id,)
         )
@@ -92,7 +91,7 @@ async def test_reorder_rejects_a_foreign_rule_id(database):
         table_id=fixture_b["table_id"], output="b"
     )
 
-    with pytest.raises(InvalidRuleOrderError):
+    with pytest.raises(InvariantViolationError):
         await RulesUseCases(database).reorder_rules(
             table_id=fixture_a["table_id"], ordered_rule_ids=(foreign.id, a.id)
         )
@@ -103,7 +102,7 @@ async def test_reorder_rejects_a_duplicated_id(database):
     table_id = fixture["table_id"]
     a = await RulesUseCases(database).create_rule(table_id=table_id, output="a")
 
-    with pytest.raises(InvalidRuleOrderError):
+    with pytest.raises(InvariantViolationError):
         await RulesUseCases(database).reorder_rules(
             table_id=table_id, ordered_rule_ids=(a.id, a.id)
         )

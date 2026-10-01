@@ -1,8 +1,7 @@
 import pytest
 
-from app.generation.errors import InvalidGenerationJobTransitionError
 from app.generation.use_cases import GenerationUseCases
-from app.shared.errors import NotFoundError
+from app.shared.errors import InvariantViolationError, NotFoundError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,
@@ -48,7 +47,7 @@ async def test_cancel_already_terminal_job_raises(database):
     table_id = fixture["table_id"]
     completed = await generate_and_wait(database, table_id)
 
-    with pytest.raises(InvalidGenerationJobTransitionError):
+    with pytest.raises(InvariantViolationError):
         await GenerationUseCases(database).cancel_generation_job(job_id=completed.id)
 
 

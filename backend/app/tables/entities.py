@@ -5,13 +5,7 @@ memory, saved whole via `DecisionTableRepository`.
 
 from dataclasses import dataclass, field
 
-from app.shared.errors import ValidationError
-from app.tables.errors import (
-    DuplicateFactorNameError,
-    DuplicateFactorValueError,
-    UnknownFactorInFilterError,
-    UnknownFactorValueInFilterError,
-)
+from app.shared.errors import InvariantViolationError, ValidationError
 
 
 @dataclass
@@ -33,12 +27,14 @@ class Factor:
 
         Raises:
             ValidationError: if `value` is blank.
-            DuplicateFactorValueError: if `value` already exists on this factor.
+            InvariantViolationError: if `value` already exists on this factor.
         """
         if not value.strip():
             raise ValidationError("value must not be empty")
         if any(v.value == value for v in self.values):
-            raise DuplicateFactorValueError(value)
+            raise InvariantViolationError(
+                f"Value {value!r} is already used in this factor"
+            )
         factor_value = FactorValue(id=None, value=value, order_index=len(self.values))
         self.values.append(factor_value)
         return factor_value
@@ -60,12 +56,14 @@ class DecisionTable:
 
         Raises:
             ValidationError: if `name` is blank.
-            DuplicateFactorNameError: if `name` already exists on this table.
+            InvariantViolationError: if `name` already exists on this table.
         """
         if not name.strip():
             raise ValidationError("name must not be empty")
         if any(f.name == name for f in self.factors):
-            raise DuplicateFactorNameError(name)
+            raise InvariantViolationError(
+                f"Factor name {name!r} is already used in this table"
+            )
         factor = Factor(id=None, name=name, order_index=len(self.factors))
         self.factors.append(factor)
         return factor
@@ -81,13 +79,21 @@ class DecisionTable:
     def validate_factor_value_pairs(self, pairs: list[tuple[int, int]]) -> None:
         """Raise if any (factor_id, factor_value_id) pair doesn't belong to
         this table — used to validate bulk-filter and evaluate-assignment
-        inputs before they reach the database (specs 003/004)."""
+        inputs before they reach the database (specs 003/004).
+
+        Raises:
+            ValidationError: if a pair names a factor or value not on this table.
+        """
         for factor_id, factor_value_id in pairs:
             factor = self.get_factor(factor_id)
             if factor is None:
-                raise UnknownFactorInFilterError(factor_id, self.id or 0)
+                raise ValidationError(
+                    f"Factor {factor_id} does not belong to decision table {self.id or 0}"
+                )
             if factor.get_value(factor_value_id) is None:
-                raise UnknownFactorValueInFilterError(factor_value_id, factor_id)
+                raise ValidationError(
+                    f"Factor value {factor_value_id} does not belong to factor {factor_id}"
+                )
 
     def total_combinations(self) -> int:
         """Return the cartesian-product size of this table's factor values,

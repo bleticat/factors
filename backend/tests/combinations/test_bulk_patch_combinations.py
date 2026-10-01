@@ -5,11 +5,8 @@ from app.combinations.use_cases import (
     BulkPatchInput,
     CombinationsUseCases,
 )
+from app.shared.errors import ValidationError
 from app.shared.pagination import PageRequest
-from app.tables.errors import (
-    UnknownFactorInFilterError,
-    UnknownFactorValueInFilterError,
-)
 from tests.helpers import build_standard_table, generate_and_wait
 
 
@@ -67,7 +64,7 @@ async def test_bulk_patch_rejects_unknown_factor_in_filter(database):
     table_id = fixture["table_id"]
     await generate_and_wait(database, table_id)
 
-    with pytest.raises(UnknownFactorInFilterError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).bulk_patch_combinations(
             table_id=table_id,
             filter=BulkFilterInput(factor_values=((999, 1),)),
@@ -82,7 +79,7 @@ async def test_bulk_patch_rejects_value_not_belonging_to_factor(database):
     os_value_id = fixture["os_values"][0]  # belongs to OS, not Browser
     await generate_and_wait(database, table_id)
 
-    with pytest.raises(UnknownFactorValueInFilterError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).bulk_patch_combinations(
             table_id=table_id,
             filter=BulkFilterInput(factor_values=((browser_id, os_value_id),)),
