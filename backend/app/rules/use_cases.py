@@ -1,7 +1,5 @@
 """Use cases for the `rules` module."""
 
-from __future__ import annotations
-
 import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,11 +13,7 @@ from app.rules.entities import Rule, RuleAssignment
 from app.rules.errors import InvalidRuleOrderError
 from app.rules.ports.rule_queries import RuleDTO
 from app.rules.service import RuleApplyRef, apply_rule
-from app.shared.errors import (
-    DuplicateFactorInAssignmentError,
-    EmptyNameError,
-    NotFoundError,
-)
+from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 
@@ -57,9 +51,8 @@ class RulesUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            EmptyNameError: if `output` is blank.
-            DuplicateFactorInAssignmentError: if `factor_values` names the
-                same factor twice.
+            ValidationError: if `output` is blank, or if `factor_values`
+                names the same factor twice.
             UnknownFactorInFilterError: if `factor_values` names a factor not
                 on this table.
             UnknownFactorValueInFilterError: if `factor_values` names a value
@@ -70,12 +63,14 @@ class RulesUseCases:
             if table is None:
                 raise NotFoundError(f"Decision table {table_id} not found")
             if not output.strip():
-                raise EmptyNameError("output")
+                raise ValidationError("output must not be empty")
 
             seen: set[int] = set()
             for factor_id, _ in factor_values:
                 if factor_id in seen:
-                    raise DuplicateFactorInAssignmentError(factor_id)
+                    raise ValidationError(
+                        f"Factor {factor_id} is assigned more than once in the same request"
+                    )
                 seen.add(factor_id)
             table.validate_factor_value_pairs(list(factor_values))
 
@@ -126,9 +121,8 @@ class RulesUseCases:
 
         Raises:
             NotFoundError: if `table_id` or `rule_id` doesn't exist.
-            EmptyNameError: if `output` is given but blank.
-            DuplicateFactorInAssignmentError: if `factor_values` names the
-                same factor twice.
+            ValidationError: if `output` is given but blank, or if
+                `factor_values` names the same factor twice.
             UnknownFactorInFilterError: if `factor_values` names a factor not
                 on this table.
             UnknownFactorValueInFilterError: if `factor_values` names a value
@@ -144,7 +138,7 @@ class RulesUseCases:
 
             if output is not None:
                 if not output.strip():
-                    raise EmptyNameError("output")
+                    raise ValidationError("output must not be empty")
                 rule.output = output
             if title_set:
                 rule.title = title.strip() if title and title.strip() else None
@@ -154,7 +148,9 @@ class RulesUseCases:
                 seen: set[int] = set()
                 for factor_id, _ in factor_values:
                     if factor_id in seen:
-                        raise DuplicateFactorInAssignmentError(factor_id)
+                        raise ValidationError(
+                            f"Factor {factor_id} is assigned more than once in the same request"
+                        )
                     seen.add(factor_id)
                 table.validate_factor_value_pairs(list(factor_values))
                 rule.factor_values = [

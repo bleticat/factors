@@ -2,8 +2,6 @@
 002's regression case: mixed-radix cursor decomposition must match
 `itertools.product` order exactly."""
 
-from __future__ import annotations
-
 import itertools
 
 from app.combinations.entities import (

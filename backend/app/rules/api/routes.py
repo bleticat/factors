@@ -1,22 +1,18 @@
 """Thin HTTP boundary: parse input, call the module's use cases, serialize
 the result."""
 
-from __future__ import annotations
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.rules.api import schemas
 from app.rules.use_cases import RulesUseCases
-from app.shared.api import get_database
 from app.shared.pagination import PageRequest
-from app.shared.ports.database import Database
 
 router = APIRouter()
 
 
-def get_rules_use_cases(database: Database = Depends(get_database)) -> RulesUseCases:
+def get_rules_use_cases(request: Request) -> RulesUseCases:
     """FastAPI dependency: build a `RulesUseCases` for the current request."""
-    return RulesUseCases(database)
+    return RulesUseCases(request.app.state.database)
 
 
 @router.post("/{table_id}/rules", status_code=201)

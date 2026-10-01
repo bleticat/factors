@@ -8,8 +8,6 @@ used by generation batching, since it's pure domain logic independent of
 persistence.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from enum import StrEnum
 

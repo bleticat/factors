@@ -6,8 +6,6 @@ and spec 002 for why this is how the job's incremental, crash-safe
 progress is achieved.
 """
 
-from __future__ import annotations
-
 import logging
 
 from app.generation.entities import TERMINAL_STATUSES, GenerationJobStatus

@@ -5,37 +5,14 @@ Bounded contexts derive their own domain errors from these so boundary layers
 -> 404, ValidationError -> 422) without knowing every concrete error type.
 """
 
-from __future__ import annotations
 
-
-class DomainError(Exception):
+class AppError(Exception):
     """Base class for business-rule violations raised by command/query handlers."""
 
 
-class NotFoundError(DomainError):
+class NotFoundError(AppError):
     """Raised when a requested entity does not exist."""
 
 
-class ValidationError(DomainError):
+class ValidationError(AppError):
     """Raised when a request violates a business validation rule or invariant."""
-
-
-class EmptyNameError(ValidationError):
-    """A required name/value/output field was blank. Raised by more than one
-    module (`tables`, `rules`), so it lives here rather than in one of them."""
-
-    def __init__(self, field: str) -> None:
-        super().__init__(f"{field} must not be empty")
-        self.field = field
-
-
-class DuplicateFactorInAssignmentError(ValidationError):
-    """A factor-value assignment input (rule, evaluate) names the same
-    factor twice. Raised by both `rules` and `combinations`, so it lives
-    here rather than in one of them."""
-
-    def __init__(self, factor_id: int) -> None:
-        super().__init__(
-            f"Factor {factor_id} is assigned more than once in the same request"
-        )
-        self.factor_id = factor_id

@@ -1,8 +1,6 @@
 """Internal helper logic `combinations.queries` delegates to. Not part of
 the module's public request/response surface."""
 
-from __future__ import annotations
-
 from app.tables.errors import (
     UnknownFactorInFilterError,
     UnknownFactorValueInFilterError,

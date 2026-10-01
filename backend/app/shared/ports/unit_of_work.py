@@ -16,8 +16,6 @@ true DDD-separate contexts. Worth its own ADR rather than letting ADR 003
 quietly go stale.
 """
 
-from __future__ import annotations
-
 from typing import Protocol
 
 from app.combinations.ports.combination_repository import CombinationRepository

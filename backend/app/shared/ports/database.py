@@ -24,8 +24,6 @@ true DDD-separate contexts. Worth its own ADR rather than letting ADR 003
 quietly go stale.
 """
 
-from __future__ import annotations
-
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 

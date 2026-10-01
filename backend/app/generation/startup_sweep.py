@@ -4,8 +4,6 @@ caller. No job can legitimately be `running` right after a process start
 (generation runs in-process via `BackgroundTasks`), so any such job was
 abandoned by the previous process and is swept to `failed` (spec 002)."""
 
-from __future__ import annotations
-
 from app.generation.use_cases import GenerationUseCases
 from app.shared.ports.database import Database
 

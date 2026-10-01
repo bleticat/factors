@@ -1,8 +1,6 @@
 """Internal helper logic `generation.commands` delegates to. Not part of
 the module's public request/response surface."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from app.generation.entities import GenerationJob

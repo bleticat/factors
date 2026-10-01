@@ -3,11 +3,9 @@ factor's ordered values. Small (dozens of rows) — loaded whole, mutated in
 memory, saved whole via `DecisionTableRepository`.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
-from app.shared.errors import EmptyNameError
+from app.shared.errors import ValidationError
 from app.tables.errors import (
     DuplicateFactorNameError,
     DuplicateFactorValueError,
@@ -34,11 +32,11 @@ class Factor:
         """Append a new value to this factor and return it.
 
         Raises:
-            EmptyNameError: if `value` is blank.
+            ValidationError: if `value` is blank.
             DuplicateFactorValueError: if `value` already exists on this factor.
         """
         if not value.strip():
-            raise EmptyNameError("value")
+            raise ValidationError("value must not be empty")
         if any(v.value == value for v in self.values):
             raise DuplicateFactorValueError(value)
         factor_value = FactorValue(id=None, value=value, order_index=len(self.values))
@@ -61,11 +59,11 @@ class DecisionTable:
         """Append a new factor to this table and return it.
 
         Raises:
-            EmptyNameError: if `name` is blank.
+            ValidationError: if `name` is blank.
             DuplicateFactorNameError: if `name` already exists on this table.
         """
         if not name.strip():
-            raise EmptyNameError("name")
+            raise ValidationError("name must not be empty")
         if any(f.name == name for f in self.factors):
             raise DuplicateFactorNameError(name)
         factor = Factor(id=None, name=name, order_index=len(self.factors))

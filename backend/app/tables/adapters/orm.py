@@ -2,8 +2,6 @@
 `specs/features/decision_tables/*.md` and the plan's "Storage schema"
 section for the rationale behind each column/index/constraint."""
 
-from __future__ import annotations
-
 from datetime import datetime
 
 from sqlalchemy import (

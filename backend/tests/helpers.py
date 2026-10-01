@@ -3,8 +3,6 @@
 must never hide the use-case call a test is actually verifying.
 """
 
-from __future__ import annotations
-
 from app.generation.entities import TERMINAL_STATUSES
 from app.generation.service import GenerationJobRef
 from app.generation.use_cases import GenerationUseCases

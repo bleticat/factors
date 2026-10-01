@@ -1,7 +1,7 @@
 import pytest
 
 from app.combinations.use_cases import CombinationsUseCases
-from app.shared.errors import DuplicateFactorInAssignmentError
+from app.shared.errors import ValidationError
 from app.shared.pagination import PageRequest
 from app.tables.errors import (
     UnknownFactorInFilterError,
@@ -152,7 +152,7 @@ async def test_assignment_with_duplicate_factor_is_rejected(database):
     chrome_id, firefox_id = fixture["browser_values"][0], fixture["browser_values"][1]
     await generate_and_wait(database, table_id)
 
-    with pytest.raises(DuplicateFactorInAssignmentError):
+    with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
             table_id=table_id,
             assignment=((browser_id, chrome_id), (browser_id, firefox_id)),

@@ -1,7 +1,5 @@
 """Use cases for the `generation` module."""
 
-from __future__ import annotations
-
 from app.combinations.entities import (
     Combination,
     CombinationValue,

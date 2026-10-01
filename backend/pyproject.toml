@@ -3,7 +3,7 @@ name = "factors-backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "aiosqlite>=0.22.1",
     "alembic>=1.19.2",

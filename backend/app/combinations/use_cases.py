@@ -1,7 +1,5 @@
 """Use cases for the `combinations` module."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from app.combinations.entities import parse_status
@@ -12,7 +10,7 @@ from app.combinations.ports.combination_repository import (
     FactorValueAssignment,
 )
 from app.combinations.service import validate_factor_value_pairs
-from app.shared.errors import DuplicateFactorInAssignmentError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 
@@ -205,8 +203,7 @@ class CombinationsUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            DuplicateFactorInAssignmentError: if `assignment` names the same
-                factor twice.
+            ValidationError: if `assignment` names the same factor twice.
             UnknownFactorInFilterError: if `assignment` names a factor not on
                 this table.
             UnknownFactorValueInFilterError: if `assignment` names a value
@@ -220,7 +217,9 @@ class CombinationsUseCases:
         seen: set[int] = set()
         for factor_id in factor_ids:
             if factor_id in seen:
-                raise DuplicateFactorInAssignmentError(factor_id)
+                raise ValidationError(
+                    f"Factor {factor_id} is assigned more than once in the same request"
+                )
             seen.add(factor_id)
 
         validate_factor_value_pairs(table, list(assignment))

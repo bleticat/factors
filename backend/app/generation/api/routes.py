@@ -3,32 +3,26 @@ the result. The only exception is `request_generation`, which additionally
 schedules the background batch loop — that loop is itself a boundary, not
 a use-case method (see `generation/worker.py`)."""
 
-from __future__ import annotations
-
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from app.config import settings
 from app.generation.use_cases import GenerationUseCases
 from app.generation.worker import run_generation_job
-from app.shared.api import get_database
-from app.shared.ports.database import Database
 
 router = APIRouter()
 
 
-def get_generation_use_cases(
-    database: Database = Depends(get_database),
-) -> GenerationUseCases:
+def get_generation_use_cases(request: Request) -> GenerationUseCases:
     """FastAPI dependency: build a `GenerationUseCases` for the current request."""
-    return GenerationUseCases(database)
+    return GenerationUseCases(request.app.state.database)
 
 
 @router.post("/{table_id}/generation-jobs", status_code=202)
 async def request_generation(
     table_id: int,
     background_tasks: BackgroundTasks,
+    request: Request,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
-    database: Database = Depends(get_database),
 ):
     """Start generating combinations for a decision table and schedule the
     background batch loop that drives the job to completion."""
@@ -37,7 +31,7 @@ async def request_generation(
     )
     background_tasks.add_task(
         run_generation_job,
-        database=database,
+        database=request.app.state.database,
         job_id=job.id,
         batch_size=settings.generation_batch_size,
     )

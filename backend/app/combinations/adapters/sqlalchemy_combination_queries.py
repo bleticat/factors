@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections import defaultdict
 
 from sqlalchemy import func, literal, select, union_all

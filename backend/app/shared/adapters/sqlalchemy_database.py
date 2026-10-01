@@ -5,8 +5,6 @@ that wires every module's concrete read-side query adapters together
 exception to ADR 003's shared/-stays-generic rule rather than a leak).
 """
 
-from __future__ import annotations
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 

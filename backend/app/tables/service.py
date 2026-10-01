@@ -1,8 +1,6 @@
 """Internal helper logic `tables.commands` delegates to. Not part of the
 module's public request/response surface."""
 
-from __future__ import annotations
-
 from app.generation.errors import GenerationInProgressError
 from app.generation.ports.generation_job_repository import GenerationJobRepository
 

@@ -1,8 +1,6 @@
 """Internal helper logic `rules.commands` delegates to. Not part of the
 module's public request/response surface."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import UTC, datetime
 

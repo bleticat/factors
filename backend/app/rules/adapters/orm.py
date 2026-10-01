@@ -2,8 +2,6 @@
 reference `tables`' tables by name only — no Python-level import of their
 ORM rows is needed (see `app/tables/adapters/orm.py`)."""
 
-from __future__ import annotations
-
 from datetime import datetime
 
 from sqlalchemy import (

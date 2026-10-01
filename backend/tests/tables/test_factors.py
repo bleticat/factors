@@ -1,6 +1,6 @@
 import pytest
 
-from app.shared.errors import EmptyNameError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.tables.errors import DuplicateFactorNameError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
@@ -19,7 +19,7 @@ async def test_add_factor_appends_with_incrementing_order_index(database):
 
 async def test_add_factor_rejects_empty_name(database):
     table_id = await create_table(database)
-    with pytest.raises(EmptyNameError):
+    with pytest.raises(ValidationError):
         await TablesUseCases(database).add_factor(table_id=table_id, name="  ")
 
 

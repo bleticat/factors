@@ -2,7 +2,7 @@ import pytest
 
 from app.combinations.use_cases import CombinationsUseCases
 from app.rules.use_cases import RulesUseCases
-from app.shared.errors import EmptyNameError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
@@ -135,7 +135,7 @@ async def test_update_rule_rejects_blank_output(database):
     table_id = fixture["table_id"]
     created = await RulesUseCases(database).create_rule(table_id=table_id, output="x")
 
-    with pytest.raises(EmptyNameError):
+    with pytest.raises(ValidationError):
         await RulesUseCases(database).update_rule(
             table_id=table_id, rule_id=created.id, output="   "
         )

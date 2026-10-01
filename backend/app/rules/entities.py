@@ -6,8 +6,6 @@ Deliberately not part of the `DecisionTable` aggregate, same rationale as
 `Combination`.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime
 

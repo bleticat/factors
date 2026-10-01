@@ -1,6 +1,6 @@
 import pytest
 
-from app.shared.errors import EmptyNameError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.tables.errors import DuplicateFactorValueError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
@@ -39,7 +39,7 @@ async def test_add_factor_value_rejects_duplicate_within_factor(database):
 async def test_add_factor_value_rejects_empty_value(database):
     table_id = await create_table(database)
     factor_id = await _make_factor(database, table_id)
-    with pytest.raises(EmptyNameError):
+    with pytest.raises(ValidationError):
         await TablesUseCases(database).add_factor_value(
             table_id=table_id, factor_id=factor_id, value="  "
         )

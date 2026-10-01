@@ -4,8 +4,6 @@ filter shape used by both per the review/bulk-refine spec's "filter to see,
 then bulk-apply to the filtered set" model.
 """
 
-from __future__ import annotations
-
 from sqlalchemy import Select, exists
 from sqlalchemy.sql import ColumnElement
 

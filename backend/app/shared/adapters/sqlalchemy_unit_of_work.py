@@ -5,8 +5,6 @@ an acknowledged exception to ADR 003's shared/-stays-generic rule rather
 than a leak).
 """
 
-from __future__ import annotations
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.combinations.adapters.sqlalchemy_combination_repository import (

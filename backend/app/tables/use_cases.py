@@ -8,11 +8,9 @@ free to open more than one transaction if it genuinely has
 independent-commit steps.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
-from app.shared.errors import EmptyNameError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 from app.tables.entities import DecisionTable
@@ -74,10 +72,10 @@ class TablesUseCases:
         """Create a new decision table.
 
         Raises:
-            EmptyNameError: if `name` is blank.
+            ValidationError: if `name` is blank.
         """
         if not name.strip():
-            raise EmptyNameError("name")
+            raise ValidationError("name must not be empty")
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.add(
                 DecisionTable(id=None, name=name, description=description)
@@ -101,7 +99,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            EmptyNameError: if `name` is given but blank.
+            ValidationError: if `name` is given but blank.
         """
         async with self._database.unit_of_work() as uow:
             table = await uow.tables.get(table_id)
@@ -110,7 +108,7 @@ class TablesUseCases:
 
             if name is not None:
                 if not name.strip():
-                    raise EmptyNameError("name")
+                    raise ValidationError("name must not be empty")
                 table.name = name
             if description_set:
                 table.description = description
@@ -132,7 +130,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
-            EmptyNameError: if `name` is blank.
+            ValidationError: if `name` is blank.
             DuplicateFactorNameError: if `name` is already used in this table.
             GenerationInProgressError: if the table has a generation job running.
         """
@@ -160,7 +158,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            EmptyNameError: if `name` is given but blank.
+            ValidationError: if `name` is given but blank.
             DuplicateFactorNameError: if `name` is already used by another
                 factor in this table.
             GenerationInProgressError: if the table has a generation job running.
@@ -176,7 +174,7 @@ class TablesUseCases:
 
             if name is not None:
                 if not name.strip():
-                    raise EmptyNameError("name")
+                    raise ValidationError("name must not be empty")
                 if any(f.name == name and f.id != factor.id for f in table.factors):
                     raise DuplicateFactorNameError(name)
                 factor.name = name
@@ -224,7 +222,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            EmptyNameError: if `value` is blank.
+            ValidationError: if `value` is blank.
             DuplicateFactorValueError: if `value` already exists on this factor.
             GenerationInProgressError: if the table has a generation job running.
         """
@@ -256,7 +254,7 @@ class TablesUseCases:
 
         Raises:
             NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
-            EmptyNameError: if `value` is given but blank.
+            ValidationError: if `value` is given but blank.
             DuplicateFactorValueError: if `value` is already used by another
                 value on this factor.
             GenerationInProgressError: if the table has a generation job running.
@@ -275,7 +273,7 @@ class TablesUseCases:
 
             if value is not None:
                 if not value.strip():
-                    raise EmptyNameError("value")
+                    raise ValidationError("value must not be empty")
                 if any(v.value == value and v.id != existing.id for v in factor.values):
                     raise DuplicateFactorValueError(value)
                 existing.value = value

@@ -7,11 +7,7 @@ from app.combinations.use_cases import (
 )
 from app.rules.ports.rule_queries import RuleValueDTO
 from app.rules.use_cases import RulesUseCases
-from app.shared.errors import (
-    DuplicateFactorInAssignmentError,
-    EmptyNameError,
-    NotFoundError,
-)
+from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import PageRequest
 from app.tables.errors import (
     UnknownFactorInFilterError,
@@ -196,7 +192,7 @@ async def test_reapply_rules_on_demand_refreshes_matched_count(database):
 async def test_create_rule_rejects_empty_output(database):
     fixture = await build_standard_table(database)
     table_id = fixture["table_id"]
-    with pytest.raises(EmptyNameError):
+    with pytest.raises(ValidationError):
         await RulesUseCases(database).create_rule(table_id=table_id, output="   ")
 
 
@@ -227,7 +223,7 @@ async def test_create_rule_rejects_duplicate_factor_in_assignment(database):
     table_id = fixture["table_id"]
     browser_id = fixture["browser_id"]
     chrome_id, firefox_id = fixture["browser_values"][0], fixture["browser_values"][1]
-    with pytest.raises(DuplicateFactorInAssignmentError):
+    with pytest.raises(ValidationError):
         await RulesUseCases(database).create_rule(
             table_id=table_id,
             factor_values=((browser_id, chrome_id), (browser_id, firefox_id)),

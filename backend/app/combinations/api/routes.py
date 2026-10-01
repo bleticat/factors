@@ -1,9 +1,7 @@
 """Thin HTTP boundary: parse input, call the module's use cases, serialize
 the result."""
 
-from __future__ import annotations
-
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.combinations.api import schemas
 from app.combinations.use_cases import (
@@ -11,18 +9,14 @@ from app.combinations.use_cases import (
     BulkPatchInput,
     CombinationsUseCases,
 )
-from app.shared.api import get_database
 from app.shared.pagination import PageRequest
-from app.shared.ports.database import Database
 
 router = APIRouter()
 
 
-def get_combinations_use_cases(
-    database: Database = Depends(get_database),
-) -> CombinationsUseCases:
+def get_combinations_use_cases(request: Request) -> CombinationsUseCases:
     """FastAPI dependency: build a `CombinationsUseCases` for the current request."""
-    return CombinationsUseCases(database)
+    return CombinationsUseCases(request.app.state.database)
 
 
 @router.get("/{table_id}/combinations")

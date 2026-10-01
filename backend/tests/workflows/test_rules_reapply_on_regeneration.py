@@ -7,8 +7,6 @@ must drive generation through the real worker loop rather than the raw
 batch-call loop `tests/helpers.generate_and_wait` uses.
 """
 
-from __future__ import annotations
-
 from app.combinations.use_cases import CombinationsUseCases
 from app.generation.use_cases import GenerationUseCases
 from app.generation.worker import run_generation_job

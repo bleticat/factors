@@ -2,8 +2,6 @@
 these only parse input, call the module's command/query service, and
 serialize the result — no business logic lives here."""
 
-from __future__ import annotations
-
 from pydantic import BaseModel, Field
 
 

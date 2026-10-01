@@ -1,6 +1,6 @@
 import pytest
 
-from app.shared.errors import EmptyNameError, NotFoundError
+from app.shared.errors import NotFoundError, ValidationError
 from app.tables.use_cases import TablesUseCases
 from tests.helpers import create_table
 
@@ -18,7 +18,7 @@ async def test_create_decision_table_succeeds(database):
 
 
 async def test_create_decision_table_rejects_empty_name(database):
-    with pytest.raises(EmptyNameError):
+    with pytest.raises(ValidationError):
         await TablesUseCases(database).create_decision_table(name="   ")
 
 
