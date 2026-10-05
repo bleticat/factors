@@ -23,6 +23,13 @@ ever needs:
   every read in the block sees the same view, rather than each opening its
   own connection and risking a result that doesn't agree with the others.
 
+A `DataAccess` is only valid inside the `async with` that opened it. The
+concrete implementation enforces this: every repository/reader attribute
+stops working the instant that block exits, raising `RuntimeError` on the
+next call rather than silently running against an already-closed session
+if a `db` reference leaks out of its scope (see
+`SqlAlchemyDataAccess._deactivate`).
+
 Declared as abstract-port-typed attributes (not raw sessions), so use-case
 code never imports SQLAlchemy or any concrete adapter class — it only ever
 sees the abstract repository/reader port each attribute is typed with. The
