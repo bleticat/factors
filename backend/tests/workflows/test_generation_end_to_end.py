@@ -1,4 +1,4 @@
-from app.combinations.use_cases import (
+from factors.features.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchCombinationsRequest,
     BulkPatchInput,
@@ -7,8 +7,8 @@ from app.combinations.use_cases import (
     ListCombinationsRequest,
     PatchCombinationRequest,
 )
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import GetDecisionTableRequest, TablesUseCases
+from factors.features.tables.use_cases import GetDecisionTableRequest, TablesUseCases
+from factors.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 

@@ -1,5 +1,8 @@
-from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
-from app.tables.use_cases import (
+from factors.features.combinations.use_cases import (
+    CombinationsUseCases,
+    ListCombinationsRequest,
+)
+from factors.features.tables.use_cases import (
     DeleteFactorRequest,
     DeleteFactorValueRequest,
     TablesUseCases,

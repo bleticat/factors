@@ -1,14 +1,17 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
-from app.rules.use_cases import (
+from factors.features.combinations.use_cases import (
+    CombinationsUseCases,
+    ListCombinationsRequest,
+)
+from factors.features.rules.use_cases import (
     CreateRuleRequest,
     ListRulesRequest,
     RulesUseCases,
     UpdateRuleRequest,
 )
-from app.shared.errors import NotFoundError, ValidationError
-from app.shared.pagination import PageRequest
+from factors.shared.errors import NotFoundError, ValidationError
+from factors.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 

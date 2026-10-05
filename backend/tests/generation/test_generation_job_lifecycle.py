@@ -1,6 +1,6 @@
 import pytest
 
-from app.generation.use_cases import (
+from factors.features.generation.use_cases import (
     CancelGenerationJobRequest,
     GenerateCombinationsBatchRequest,
     GenerationUseCases,
@@ -9,7 +9,7 @@ from app.generation.use_cases import (
     MarkStaleGenerationJobsFailedRequest,
     RequestGenerationRequest,
 )
-from app.shared.errors import InvariantViolationError, NotFoundError
+from factors.shared.errors import InvariantViolationError, NotFoundError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,

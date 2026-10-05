@@ -1,12 +1,16 @@
 import pytest
 
-from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
-from app.tables.use_cases import (
+from factors.features.tables.use_cases import (
     AddFactorRequest,
     DeleteFactorRequest,
     GetDecisionTableRequest,
     TablesUseCases,
     UpdateFactorRequest,
+)
+from factors.shared.errors import (
+    InvariantViolationError,
+    NotFoundError,
+    ValidationError,
 )
 from tests.helpers import create_table
 

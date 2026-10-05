@@ -1,27 +1,27 @@
 import pytest
 
-from app.combinations.use_cases import (
+from factors.features.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchCombinationsRequest,
     BulkPatchInput,
     CombinationsUseCases,
     ListCombinationsRequest,
 )
-from app.rules.entities import RuleAssignment
-from app.rules.use_cases import (
+from factors.features.rules.entities import RuleAssignment
+from factors.features.rules.use_cases import (
     CreateRuleRequest,
     DeleteRuleRequest,
     ListRulesRequest,
     ReapplyRulesRequest,
     RulesUseCases,
 )
-from app.shared.errors import NotFoundError, ValidationError
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import (
+from factors.features.tables.use_cases import (
     DeleteFactorRequest,
     DeleteFactorValueRequest,
     TablesUseCases,
 )
+from factors.shared.errors import NotFoundError, ValidationError
+from factors.shared.pagination import PageRequest
 from tests.helpers import (
     add_factor_with_values,
     build_standard_table,

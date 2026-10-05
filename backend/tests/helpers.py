@@ -1,16 +1,16 @@
-from app.generation.entities import TERMINAL_STATUSES, GenerationJob
-from app.generation.use_cases import (
+from factors.features.generation.entities import TERMINAL_STATUSES, GenerationJob
+from factors.features.generation.use_cases import (
     GenerateCombinationsBatchRequest,
     GenerationUseCases,
     RequestGenerationRequest,
 )
-from app.shared.ports.database import Database
-from app.tables.use_cases import (
+from factors.features.tables.use_cases import (
     AddFactorRequest,
     AddFactorValueRequest,
     CreateDecisionTableRequest,
     TablesUseCases,
 )
+from factors.shared.ports.database import Database
 
 # Matches the cap production wires from `settings.max_combinations`; kept
 # generous here so ordinary fixture tables never trip it. Pass a smaller

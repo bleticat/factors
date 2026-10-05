@@ -25,7 +25,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--doctest-modules"
-testpaths = ["tests", "app"]
+testpaths = ["tests", "factors"]
 
 [tool.ruff.lint]
 # B008: FastAPI's `Depends(...)` in a parameter default is the framework's
@@ -34,5 +34,5 @@ testpaths = ["tests", "app"]
 # UP046/UP047: keep `class Foo(Generic[T])`/`TypeVar` rather than PEP 695
 # `class Foo[T]`/`def foo[T]` syntax — more broadly familiar and consistent
 # across the codebase's few generic classes and functions (e.g.
-# `app/shared/pagination.py`'s `Page`).
+# `factors/shared/pagination.py`'s `Page`).
 ignore = ["B008", "UP046", "UP047"]

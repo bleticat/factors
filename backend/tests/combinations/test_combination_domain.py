@@ -2,14 +2,14 @@ import itertools
 
 import pytest
 
-from app.combinations.entities import (
+from factors.features.combinations.entities import (
     CombinationStatus,
     build_signature,
     decompose_index,
     parse_status,
     total_combinations,
 )
-from app.shared.errors import ValidationError
+from factors.shared.errors import ValidationError
 
 
 def test_parse_status_parses_a_valid_status():

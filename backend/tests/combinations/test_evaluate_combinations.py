@@ -1,13 +1,13 @@
 import pytest
 
-from app.combinations.use_cases import (
+from factors.features.combinations.use_cases import (
     CombinationsUseCases,
     EvaluateCombinationsRequest,
     ListCombinationsRequest,
     PatchCombinationRequest,
 )
-from app.shared.errors import ValidationError
-from app.shared.pagination import PageRequest
+from factors.shared.errors import ValidationError
+from factors.shared.pagination import PageRequest
 from tests.helpers import (
     build_standard_table,
     create_table,

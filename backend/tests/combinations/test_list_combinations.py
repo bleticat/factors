@@ -1,5 +1,8 @@
-from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
-from app.shared.pagination import PageRequest
+from factors.features.combinations.use_cases import (
+    CombinationsUseCases,
+    ListCombinationsRequest,
+)
+from factors.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 

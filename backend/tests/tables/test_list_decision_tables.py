@@ -1,11 +1,11 @@
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import (
+from factors.features.tables.use_cases import (
     AddFactorRequest,
     AddFactorValueRequest,
     ListDecisionTablesRequest,
     ListFactorsRequest,
     TablesUseCases,
 )
+from factors.shared.pagination import PageRequest
 from tests.helpers import create_table
 
 
