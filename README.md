@@ -41,7 +41,7 @@ to reset.
 Two terminals:
 
 ```
-cd backend && uv run alembic upgrade head && uv run uvicorn factors.main:app --reload
+cd backend && uv run alembic upgrade head && uv run uvicorn factors.entrypoints.server:app --reload
 cd frontend && npm run dev
 ```
 

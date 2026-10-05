@@ -77,7 +77,7 @@ checklist items change shape depending on the answer.
       that path, load-test
 - [ ] A real backup story for whichever database is chosen
 - [ ] Error tracking (Sentry or similar) wired into the FastAPI exception
-      handlers in `factors/main.py`
+      handlers in `factors/entrypoints/server.py`
 - [ ] Pass `version=` to `FastAPI(...)` so `/docs`'s OpenAPI schema
       reflects the actual release version (`/docs` itself is already free
       — FastAPI serves it automatically)
