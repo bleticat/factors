@@ -1,10 +1,3 @@
-"""SQLAlchemy async implementation of the `DataAccess` port — the sole
-place that wires every module's concrete repository/reader adapters
-together (see `app/shared/ports/database.py`'s docstring for why that's an
-acknowledged exception to ADR 003's shared/-stays-generic rule rather than
-a leak).
-"""
-
 from typing import NoReturn
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,15 +26,6 @@ from app.tables.adapters.sqlalchemy_decision_table_repository import (
 
 
 class _ExpiredDataAccess:
-    """What every repository/reader attribute on a `SqlAlchemyDataAccess`
-    is replaced with once its owning `transaction()`/`snapshot()` block
-    exits (see `_deactivate` below). Any further use — a `db` reference a
-    use-case method kept past its `async with`, or passed outward instead
-    of being used inside it — hits this instead of the real adapter, and
-    fails loudly and immediately rather than running one more query against
-    a session that's already been committed/rolled back and returned to
-    the pool."""
-
     def __init__(self, attr_name: str) -> None:
         self._attr_name = attr_name
 
@@ -56,14 +40,7 @@ class _ExpiredDataAccess:
 
 
 class SqlAlchemyDataAccess(DataAccess):
-    """One open session's repositories and readers, all bound to the same
-    `AsyncSession` — so cross-module writes inside one use-case method
-    (e.g. `TablesUseCases.delete_factor` cascading into `combinations`/
-    `rules`) share that one transaction automatically, and a reader called
-    from the same block sees whatever that block already wrote."""
-
     def __init__(self, session: AsyncSession) -> None:
-        """Wire every module's repository and reader to the same `session`."""
         self.tables = SqlAlchemyDecisionTableRepository(session)
         self.jobs = SqlAlchemyGenerationJobRepository(session)
         self.combinations = SqlAlchemyCombinationRepository(session)
@@ -75,9 +52,6 @@ class SqlAlchemyDataAccess(DataAccess):
         self.jobs_reader = SqlAlchemyGenerationJobReader(session)
 
     def _deactivate(self) -> None:
-        """Called by `SqlAlchemyDatabase.transaction()`/`snapshot()` the
-        instant their `async with` block's body returns — before the
-        underlying session is committed/rolled back and closed."""
         self.tables = _ExpiredDataAccess("tables")
         self.jobs = _ExpiredDataAccess("jobs")
         self.combinations = _ExpiredDataAccess("combinations")

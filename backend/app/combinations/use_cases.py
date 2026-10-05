@@ -1,8 +1,3 @@
-"""Use cases for the `combinations` module. Every public method takes one
-`...Request` and returns one `...Response` wrapping the real `Combination`
-entity/entities straight from the repository/reader — there's no separate
-"DTO"/"Ref" mirror of a `Combination`'s fields."""
-
 from dataclasses import dataclass, field
 
 from app.combinations.entities import Combination, parse_status
@@ -84,19 +79,12 @@ class EvaluateCombinationsRequest:
 
 @dataclass(frozen=True)
 class EvaluateCombinationsResponse:
-    """`kind == "single"` for a full assignment (`combination` may still be
-    `None` if nothing matches); `kind == "list"` for a partial/empty
-    assignment (`page` holds every consistent combination)."""
-
     kind: str
     combination: Combination | None = None
     page: Page[Combination] | None = None
 
 
 class CombinationsUseCases:
-    """The `combinations` module's use cases. Constructed once with the
-    app's `Database`."""
-
     def __init__(self, database: Database) -> None:
         self._database = database
 
@@ -105,15 +93,6 @@ class CombinationsUseCases:
     async def patch_combination(
         self, request: PatchCombinationRequest
     ) -> PatchCombinationResponse:
-        """Update a single combination's status, output, and/or impossible reason.
-
-        `output`/`impossible_reason` are only applied when their `_set` flag
-        is True, so a caller can distinguish "leave alone" from "clear it".
-
-        Raises:
-            NotFoundError: if `table_id`/`combination_id` doesn't exist.
-            ValidationError: if `status` isn't a valid status.
-        """
         async with self._database.transaction() as db:
             combination = await db.combinations.get(
                 request.table_id, request.combination_id
@@ -134,15 +113,6 @@ class CombinationsUseCases:
     async def bulk_patch_combinations(
         self, request: BulkPatchCombinationsRequest
     ) -> BulkPatchCombinationsResponse:
-        """Apply `request.patch` to every combination in `table_id` matching
-        `request.filter`.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if a filter pair names a factor or value not on
-                this table, or a status string in `filter`/`patch` isn't a
-                valid status.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -182,14 +152,6 @@ class CombinationsUseCases:
     async def list_combinations(
         self, request: ListCombinationsRequest
     ) -> ListCombinationsResponse:
-        """List a decision table's combinations, optionally filtered by
-        status and/or factor-value assignment.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if a filter pair names a factor or value not on
-                this table, or `status` isn't a valid status.
-        """
         async with self._database.snapshot() as db:
             # `db.tables` (the write-side repository) is used here even
             # though this is a read-only method: it's the one that returns
@@ -223,19 +185,6 @@ class CombinationsUseCases:
     async def evaluate_combinations(
         self, request: EvaluateCombinationsRequest
     ) -> EvaluateCombinationsResponse:
-        """Evaluate a (possibly partial) factor-value assignment against a
-        decision table's combinations.
-
-        A full assignment (one value per factor) returns the single matching
-        combination, if any (`kind == "single"`); a partial or empty
-        assignment returns every consistent combination as a page
-        (`kind == "list"`).
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `assignment` names the same factor twice, or
-                names a factor or value not on this table.
-        """
         async with self._database.snapshot() as db:
             table = await db.tables.get(request.table_id)  # see list_combinations above
             if table is None:

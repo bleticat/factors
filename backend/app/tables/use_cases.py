@@ -1,21 +1,3 @@
-"""Use cases for the `tables` module: the `DecisionTable` aggregate itself,
-plus its child `Factor`/`FactorValue` entities (see `entities.py` for why
-factors/values are part of this aggregate rather than modules of their
-own). Every public method takes one `...Request` and returns one
-`...Response` — the only types this module's application layer deals in,
-besides the domain entities/aggregates a `Response` carries. There is no
-separate "DTO" family: a `Response` wraps the real `DecisionTable`/
-`Factor`/`FactorValue` straight from the repository, never a hand-copied
-mirror of it.
-
-Every method opens its own scope via `self._database`: a write opens
-`transaction()` (commits on clean exit, rolls back on exception), a read
-opens `snapshot()` (always rolls back). A method is free to open more than
-one if it genuinely has independent-commit steps, or a write method can
-read through the same `transaction()` it writes through — see
-`add_factor`'s `db.tables.get(...)` below.
-"""
-
 from dataclasses import dataclass, field
 
 from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
@@ -151,11 +133,6 @@ class ListFactorsResponse:
 
 
 class TablesUseCases:
-    """The `tables` module's use cases, one method each. Constructed once
-    with the app's `Database` — cheap and stateless, since each method
-    opens whatever it needs (a transaction for writes, a snapshot for
-    reads) internally."""
-
     def __init__(self, database: Database) -> None:
         self._database = database
 
@@ -164,11 +141,6 @@ class TablesUseCases:
     async def create_decision_table(
         self, request: CreateDecisionTableRequest
     ) -> CreateDecisionTableResponse:
-        """Create a new decision table.
-
-        Raises:
-            ValidationError: if `name` is blank.
-        """
         if not request.name.strip():
             raise ValidationError("name must not be empty")
         async with self._database.transaction() as db:
@@ -182,15 +154,6 @@ class TablesUseCases:
     async def update_decision_table(
         self, request: UpdateDecisionTableRequest
     ) -> UpdateDecisionTableResponse:
-        """Update a decision table's name and/or description.
-
-        `description` is only applied when `description_set` is True, so a
-        caller can distinguish "leave description alone" from "clear it".
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `name` is given but blank.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -207,21 +170,12 @@ class TablesUseCases:
             return UpdateDecisionTableResponse(table=table)
 
     async def delete_decision_table(self, request: DeleteDecisionTableRequest) -> None:
-        """Delete a decision table. A no-op if `table_id` doesn't exist."""
         async with self._database.transaction() as db:
             await db.tables.delete(request.table_id)
 
     # --- Factors --------------------------------------------------------------
 
     async def add_factor(self, request: AddFactorRequest) -> AddFactorResponse:
-        """Add a new factor to a decision table.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `name` is blank.
-            InvariantViolationError: if `name` is already used in this
-                table, or the table has a generation job running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -233,15 +187,6 @@ class TablesUseCases:
             return AddFactorResponse(factor=factor)
 
     async def update_factor(self, request: UpdateFactorRequest) -> UpdateFactorResponse:
-        """Update a factor's name and/or order index.
-
-        Raises:
-            NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            ValidationError: if `name` is given but blank.
-            InvariantViolationError: if `name` is already used by another
-                factor in this table, or the table has a generation job
-                running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -268,13 +213,6 @@ class TablesUseCases:
             return UpdateFactorResponse(factor=factor)
 
     async def delete_factor(self, request: DeleteFactorRequest) -> None:
-        """Delete a factor, cascading to every combination and rule for its
-        table (both may reference the deleted factor).
-
-        Raises:
-            NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            InvariantViolationError: if the table has a generation job running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -299,14 +237,6 @@ class TablesUseCases:
     async def add_factor_value(
         self, request: AddFactorValueRequest
     ) -> AddFactorValueResponse:
-        """Add a new value to a factor.
-
-        Raises:
-            NotFoundError: if `table_id` or `factor_id` doesn't exist.
-            ValidationError: if `value` is blank.
-            InvariantViolationError: if `value` already exists on this
-                factor, or the table has a generation job running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -323,15 +253,6 @@ class TablesUseCases:
     async def update_factor_value(
         self, request: UpdateFactorValueRequest
     ) -> UpdateFactorValueResponse:
-        """Update a factor value's value and/or order index.
-
-        Raises:
-            NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
-            ValidationError: if `value` is given but blank.
-            InvariantViolationError: if `value` is already used by another
-                value on this factor, or the table has a generation job
-                running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -362,13 +283,6 @@ class TablesUseCases:
             return UpdateFactorValueResponse(value=existing)
 
     async def delete_factor_value(self, request: DeleteFactorValueRequest) -> None:
-        """Delete a factor value, cascading to every combination and rule
-        for its table (both may reference the deleted value).
-
-        Raises:
-            NotFoundError: if `table_id`, `factor_id`, or `value_id` doesn't exist.
-            InvariantViolationError: if the table has a generation job running.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -395,11 +309,6 @@ class TablesUseCases:
     async def get_decision_table(
         self, request: GetDecisionTableRequest
     ) -> GetDecisionTableResponse:
-        """Return a decision table with its factors and their values.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-        """
         async with self._database.snapshot() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -409,17 +318,11 @@ class TablesUseCases:
     async def list_decision_tables(
         self, request: ListDecisionTablesRequest = ListDecisionTablesRequest()
     ) -> ListDecisionTablesResponse:
-        """Return a page of decision table summaries, most recently created first."""
         async with self._database.snapshot() as db:
             page = await db.tables_reader.list_summaries(request.page)
             return ListDecisionTablesResponse(page=page)
 
     async def list_factors(self, request: ListFactorsRequest) -> ListFactorsResponse:
-        """Return a decision table's factors and their values.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-        """
         async with self._database.snapshot() as db:
             table = await db.tables.get(request.table_id)
             if table is None:

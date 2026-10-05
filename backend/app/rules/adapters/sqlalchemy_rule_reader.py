@@ -14,7 +14,6 @@ class SqlAlchemyRuleReader(RuleReader):
         self._session = session
 
     async def list_for_table(self, table_id: int, page: PageRequest) -> Page[Rule]:
-        """Return a page of a decision table's rules, ordered by `order_index`."""
         count_stmt = select(func.count(RuleRow.id)).where(
             RuleRow.decision_table_id == table_id
         )
@@ -37,10 +36,6 @@ class SqlAlchemyRuleReader(RuleReader):
         )
 
     async def list_all_for_table(self, table_id: int) -> list[Rule]:
-        """Unpaginated, ordered by `order_index` — the same order rules are
-        (re)applied in (spec 008; was creation/id order before it). Used by
-        `list_rule_overlaps`, which needs every rule's assignment to compute
-        overlaps, not one page."""
         stmt = (
             select(RuleRow)
             .where(RuleRow.decision_table_id == table_id)

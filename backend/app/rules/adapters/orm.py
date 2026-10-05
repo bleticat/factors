@@ -1,7 +1,3 @@
-"""SQLAlchemy table mappings owned by the `rules` module. FK columns
-reference `tables`' tables by name only — no Python-level import of their
-ORM rows is needed (see `app/tables/adapters/orm.py`)."""
-
 from datetime import datetime
 
 from sqlalchemy import (

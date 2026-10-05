@@ -1,8 +1,3 @@
-"""Thin HTTP boundary: parse input, call the module's use cases, serialize
-the result. The only exception is `request_generation`, which additionally
-schedules the background batch loop — that loop is itself a boundary, not
-a use-case method (see `generation/worker.py`)."""
-
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from app.config import settings
@@ -18,7 +13,6 @@ router = APIRouter()
 
 
 def get_generation_use_cases(request: Request) -> GenerationUseCases:
-    """FastAPI dependency: build a `GenerationUseCases` for the current request."""
     return GenerationUseCases(request.app.state.database)
 
 
@@ -29,8 +23,6 @@ async def request_generation(
     request: Request,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
-    """Start generating combinations for a decision table and schedule the
-    background batch loop that drives the job to completion."""
     response = await use_cases.request_generation(
         RequestGenerationRequest(
             table_id=table_id, max_combinations=settings.max_combinations
@@ -51,7 +43,6 @@ async def get_generation_job(
     job_id: int,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
-    """Get a generation job's current status and progress."""
     response = await use_cases.get_generation_job(GetGenerationJobRequest(job_id))
     return response.job
 
@@ -62,6 +53,5 @@ async def cancel_generation_job(
     job_id: int,
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
-    """Cancel an active generation job."""
     response = await use_cases.cancel_generation_job(CancelGenerationJobRequest(job_id))
     return response.job

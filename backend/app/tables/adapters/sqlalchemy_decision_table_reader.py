@@ -15,7 +15,6 @@ class SqlAlchemyDecisionTableReader(DecisionTableReader):
         self._session = session
 
     async def list_summaries(self, page: PageRequest) -> Page[DecisionTableSummary]:
-        """Return a page of decision table summaries, most recently created first."""
         total = (
             await self._session.execute(
                 select(func.count()).select_from(DecisionTableRow)

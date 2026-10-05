@@ -1,6 +1,3 @@
-"""Thin HTTP boundary: parse input, call the module's use cases, serialize
-the result."""
-
 from fastapi import APIRouter, Depends, Request
 
 from app.shared.pagination import PageRequest
@@ -25,7 +22,6 @@ router = APIRouter()
 
 
 def get_tables_use_cases(request: Request) -> TablesUseCases:
-    """FastAPI dependency: build a `TablesUseCases` for the current request."""
     return TablesUseCases(request.app.state.database)
 
 
@@ -34,7 +30,6 @@ async def create_decision_table(
     body: schemas.CreateDecisionTableRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Create a new decision table."""
     response = await use_cases.create_decision_table(
         CreateDecisionTableRequest(name=body.name, description=body.description)
     )
@@ -47,7 +42,6 @@ async def list_decision_tables(
     offset: int = 0,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """List decision table summaries, most recently created first."""
     response = await use_cases.list_decision_tables(
         ListDecisionTablesRequest(page=PageRequest(limit=limit, offset=offset))
     )
@@ -58,7 +52,6 @@ async def list_decision_tables(
 async def get_decision_table(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ):
-    """Get a decision table with its factors and values."""
     response = await use_cases.get_decision_table(GetDecisionTableRequest(table_id))
     return response.table
 
@@ -69,7 +62,6 @@ async def update_decision_table(
     body: schemas.UpdateDecisionTableRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Update a decision table's name and/or description."""
     fields = body.model_fields_set
     response = await use_cases.update_decision_table(
         UpdateDecisionTableRequest(
@@ -86,7 +78,6 @@ async def update_decision_table(
 async def delete_decision_table(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ) -> None:
-    """Delete a decision table."""
     await use_cases.delete_decision_table(DeleteDecisionTableRequest(table_id))
 
 
@@ -96,7 +87,6 @@ async def add_factor(
     body: schemas.AddFactorRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Add a new factor to a decision table."""
     response = await use_cases.add_factor(
         AddFactorRequest(table_id=table_id, name=body.name)
     )
@@ -107,7 +97,6 @@ async def add_factor(
 async def list_factors(
     table_id: int, use_cases: TablesUseCases = Depends(get_tables_use_cases)
 ):
-    """List a decision table's factors and their values."""
     response = await use_cases.list_factors(ListFactorsRequest(table_id))
     return response.factors
 
@@ -119,7 +108,6 @@ async def update_factor(
     body: schemas.UpdateFactorRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Update a factor's name and/or order index."""
     response = await use_cases.update_factor(
         UpdateFactorRequest(
             table_id=table_id,
@@ -137,7 +125,6 @@ async def delete_factor(
     factor_id: int,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ) -> None:
-    """Delete a factor, cascading to every combination and rule for its table."""
     await use_cases.delete_factor(DeleteFactorRequest(table_id, factor_id))
 
 
@@ -148,7 +135,6 @@ async def add_factor_value(
     body: schemas.AddFactorValueRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Add a new value to a factor."""
     response = await use_cases.add_factor_value(
         AddFactorValueRequest(table_id=table_id, factor_id=factor_id, value=body.value)
     )
@@ -163,7 +149,6 @@ async def update_factor_value(
     body: schemas.UpdateFactorValueRequest,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ):
-    """Update a factor value's value and/or order index."""
     response = await use_cases.update_factor_value(
         UpdateFactorValueRequest(
             table_id=table_id,
@@ -183,7 +168,6 @@ async def delete_factor_value(
     value_id: int,
     use_cases: TablesUseCases = Depends(get_tables_use_cases),
 ) -> None:
-    """Delete a factor value, cascading to every combination and rule for its table."""
     await use_cases.delete_factor_value(
         DeleteFactorValueRequest(table_id, factor_id, value_id)
     )

@@ -1,11 +1,3 @@
-"""The boundary that drives a generation job to completion. This loop is not
-a use-case method — it constructs `GenerationUseCases(database)`/
-`RulesUseCases(database)` fresh per step, exactly like a route builds its
-own use cases per request. See the plan's "The async-job design" section
-and spec 002 for why this is how the job's incremental, crash-safe
-progress is achieved.
-"""
-
 import logging
 
 from app.generation.entities import TERMINAL_STATUSES, GenerationJobStatus
@@ -21,10 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 async def run_generation_job(database: Database, job_id: int, batch_size: int) -> None:
-    """Drive a generation job to completion (or failure), one
-    `batch_size`-row batch and one transaction at a time, then reapply the
-    table's rules once generation completes. Marks the job failed and
-    returns if a batch raises."""
     generation = GenerationUseCases(database)
     while True:
         try:

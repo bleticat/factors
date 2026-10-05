@@ -1,7 +1,3 @@
-"""Spec 001's "locked while generation running" rule: factor/value mutation
-commands are rejected while a generation job is pending/running, and
-succeed again once the job reaches a terminal state."""
-
 import pytest
 
 from app.generation.use_cases import GenerationUseCases, RequestGenerationRequest

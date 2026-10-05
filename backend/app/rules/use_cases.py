@@ -1,11 +1,3 @@
-"""Use cases for the `rules` module. Every public method takes one
-`...Request` and returns one `...Response` wrapping the real `Rule`
-entity/entities straight from the repository/reader — there is no
-separate "DTO"/"Ref" type mirroring a `Rule`'s fields; see `entities.py`
-for how `created_at`/`shadowed_count` ended up on the entity itself rather
-than on a read-only shadow of it.
-"""
-
 import dataclasses
 from dataclasses import dataclass, field
 
@@ -97,24 +89,12 @@ class ListRuleOverlapsResponse:
 
 
 class RulesUseCases:
-    """The `rules` module's use cases, one method each. Constructed once
-    with the app's `Database`."""
-
     def __init__(self, database: Database) -> None:
         self._database = database
 
     # --- Writes ---------------------------------------------------------------
 
     async def create_rule(self, request: CreateRuleRequest) -> CreateRuleResponse:
-        """Create a new rule for a decision table and immediately apply it
-        to the table's current combinations (spec 005).
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            ValidationError: if `output` is blank, `factor_values` names the
-                same factor twice, or names a factor or value not on this
-                table.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -159,21 +139,6 @@ class RulesUseCases:
             return CreateRuleResponse(rule=rule)
 
     async def update_rule(self, request: UpdateRuleRequest) -> UpdateRuleResponse:
-        """Edits an existing rule's output/title/assignment in place, without
-        changing its position (`order_index`) — see spec 008/009. Reordering is
-        a separate use case (`reorder_rules`), done from the "Saved rules"
-        list; any assignment is allowed regardless of how general it is
-        relative to other rules (spec 009) — a rule shadowed by a later, more
-        general one is the user's call to notice and fix (surfaced via
-        `list_rule_overlaps`/`list_rules`' `shadowed_count`), not something
-        the backend blocks.
-
-        Raises:
-            NotFoundError: if `table_id` or `rule_id` doesn't exist.
-            ValidationError: if `output` is given but blank, `factor_values`
-                names the same factor twice, or names a factor or value not
-                on this table.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -216,12 +181,6 @@ class RulesUseCases:
             return UpdateRuleResponse(rule=rule)
 
     async def delete_rule(self, request: DeleteRuleRequest) -> None:
-        """Delete a rule. Combinations it last patched keep their current
-        status/output (see spec 005's "no revert on delete").
-
-        Raises:
-            NotFoundError: if `table_id` or `rule_id` doesn't exist.
-        """
         async with self._database.transaction() as db:
             # Deleting a rule leaves whatever status/output it last set on
             # combinations untouched — see spec 005's "no revert on delete".
@@ -230,19 +189,6 @@ class RulesUseCases:
                 raise NotFoundError(f"Rule {request.rule_id} not found")
 
     async def reorder_rules(self, request: ReorderRulesRequest) -> ReapplyRulesResponse:
-        """Persists a complete new rule order for a table and immediately
-        replays every rule in that order (spec 008) — a reorder is a
-        permutation of the table's existing rule ids. Any order is allowed
-        (spec 009): a rule that ends up shadowed by a later, more general
-        one is the user's call to notice (surfaced via `shadowed_count`/
-        `list_rule_overlaps`) and fix by dragging it further down, not
-        something the backend rejects.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            InvariantViolationError: if `ordered_rule_ids` isn't a
-                permutation of the table's existing rule ids.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -270,17 +216,6 @@ class RulesUseCases:
             return ReapplyRulesResponse(rules=rules)
 
     async def reapply_rules(self, request: ReapplyRulesRequest) -> ReapplyRulesResponse:
-        """Replays every rule for a table against its current combinations,
-        in creation order, so a later rule's output wins on any row both it
-        and an earlier rule match (see spec 005). Invoked automatically by
-        the generation worker once a job reaches `completed`, and exposed
-        for on-demand use. Bounded by the table's rule count (not by
-        combination count), so — unlike generation — it fits in a single
-        transaction without batching.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -295,12 +230,6 @@ class RulesUseCases:
     # --- Reads ------------------------------------------------------------------
 
     async def list_rules(self, request: ListRulesRequest) -> ListRulesResponse:
-        """List a decision table's rules, each tagged with how many of its
-        matched combinations are currently shadowed by a later rule (spec 009).
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-        """
         async with self._database.snapshot() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -357,13 +286,6 @@ class RulesUseCases:
     async def list_rule_overlaps(
         self, request: ListRuleOverlapsRequest
     ) -> ListRuleOverlapsResponse:
-        """See spec 006: rows matched by 2+ of the table's current rules,
-        tagged with which rules matched and (last in id order) which one
-        currently wins a reapply.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-        """
         async with self._database.snapshot() as db:
             table = await db.tables.get(request.table_id)
             if table is None:

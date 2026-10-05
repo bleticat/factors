@@ -1,8 +1,3 @@
-"""Spec 001 edge case: deleting a factor or factor value invalidates every
-existing combination's signature, so it cascades deletion of all
-combinations for that table — composes generation (spec 002) with a
-structural mutation (spec 001), hence a workflow test."""
-
 from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
 from app.tables.use_cases import (
     DeleteFactorRequest,

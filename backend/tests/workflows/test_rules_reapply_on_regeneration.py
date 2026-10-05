@@ -1,12 +1,3 @@
-"""Verifies spec 005's "rules re-apply automatically once generation
-completes" behavior. That hook lives in the generation worker boundary
-(`app.generation.worker.run_generation_job`), which drives a job across
-multiple batches/transactions and reapplies rules once it completes — a
-single `generate_combinations_batch` call can't do that on its own, so this
-must drive generation through the real worker loop rather than the raw
-batch-call loop `tests/helpers.generate_and_wait` uses.
-"""
-
 from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
 from app.generation.use_cases import GenerationUseCases, RequestGenerationRequest
 from app.generation.worker import run_generation_job

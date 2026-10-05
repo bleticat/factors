@@ -1,7 +1,3 @@
-"""SQLAlchemy table mappings owned by the `combinations` module. FK columns
-reference `tables`' and `generation`'s tables by name only — no Python-level
-import of their ORM rows is needed (see `app/tables/adapters/orm.py`)."""
-
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
