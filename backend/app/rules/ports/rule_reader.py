@@ -25,11 +25,11 @@ class RuleDTO:
     # How many of this rule's own matched rows are shadowed by a rule later
     # in apply order (spec 009) — i.e. currently show a *different* rule's
     # output. Filled in by `ListRulesHandler`; always 0 straight from
-    # `RuleQueries` (a read-only-rules port has no combination access).
+    # `RuleReader` (a read-only-rules port has no combination access).
     shadowed_count: int = 0
 
 
-class RuleQueries(ABC):
+class RuleReader(ABC):
     """Read-side port for `Rule`."""
 
     @abstractmethod

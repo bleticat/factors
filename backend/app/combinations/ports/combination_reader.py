@@ -29,7 +29,7 @@ class RuleFilterInput:
     """One rule's identity + assignment, as needed to compile it into the
     same filter shape `apply_combination_filter` already understands — used
     by `list_matched_by_multiple_rules` (spec 006) instead of depending on
-    `app.rules.ports.rule_queries.RuleDTO` directly, so this port doesn't
+    `app.rules.ports.rule_reader.RuleDTO` directly, so this port doesn't
     couple to another module's read model."""
 
     rule_id: int
@@ -53,7 +53,7 @@ class CombinationOverlapDTO:
     ]  # ordered by rule id ascending; last is the current winner (spec 005)
 
 
-class CombinationQueries(ABC):
+class CombinationReader(ABC):
     """Read-side port for `Combination`/`CombinationValue`."""
 
     @abstractmethod

@@ -12,7 +12,7 @@ class GenerationJobDTO:
     error_message: str | None
 
 
-class GenerationJobQueries(ABC):
+class GenerationJobReader(ABC):
     """Read-side port for `GenerationJob`."""
 
     @abstractmethod
