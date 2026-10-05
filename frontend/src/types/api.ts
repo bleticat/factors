@@ -1,5 +1,6 @@
-// Mirrors the backend's response DTOs (app/decision_tables/ports/*.py,
-// app/decision_tables/commands/results.py).
+// Mirrors the shapes the backend's use cases return (backend/app/*/entities.py,
+// backend/app/*/use_cases.py) — most of these are the actual domain
+// entity/aggregate, not a separate read-only shadow of it.
 
 export interface FactorValue {
   id: number
@@ -28,12 +29,6 @@ export interface DecisionTableSummary {
   factor_count: number
 }
 
-export interface DecisionTableRef {
-  id: number
-  name: string
-  description: string | null
-}
-
 export interface Page<T> {
   items: T[]
   total: number
@@ -49,7 +44,10 @@ export interface GenerationJob {
   status: GenerationJobStatus
   total_combinations: number
   created_count: number
+  cursor: number
   error_message: string | null
+  started_at: string | null
+  finished_at: string | null
 }
 
 export type CombinationStatus = 'unreviewed' | 'possible' | 'impossible'
@@ -62,6 +60,8 @@ export interface CombinationValue {
 export interface Combination {
   id: number
   decision_table_id: number
+  generation_job_id: number
+  signature: string
   status: CombinationStatus
   output: string | null
   impossible_reason: string | null
@@ -99,20 +99,8 @@ export interface Rule {
   shadowed_count: number
 }
 
-export interface RuleRef {
-  id: number
-  matched_count: number
-  applied_at: string | null
-}
-
-export interface RuleApplyRef {
-  rule_id: number
-  matched_count: number
-  applied_at: string
-}
-
 export interface ReapplyRulesResult {
-  results: RuleApplyRef[]
+  rules: Rule[]
 }
 
 export interface RuleTag {

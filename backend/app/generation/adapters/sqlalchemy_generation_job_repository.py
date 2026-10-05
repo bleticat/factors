@@ -6,7 +6,7 @@ from app.generation.entities import ACTIVE_STATUSES, GenerationJob, GenerationJo
 from app.generation.ports.generation_job_repository import GenerationJobRepository
 
 
-def _to_domain(row: GenerationJobRow) -> GenerationJob:
+def row_to_generation_job(row: GenerationJobRow) -> GenerationJob:
     return GenerationJob(
         id=row.id,
         decision_table_id=row.decision_table_id,
@@ -41,7 +41,7 @@ class SqlAlchemyGenerationJobRepository(GenerationJobRepository):
     async def get(self, job_id: int) -> GenerationJob | None:
         """Return a job, or None if `job_id` doesn't exist."""
         row = await self._session.get(GenerationJobRow, job_id)
-        return None if row is None else _to_domain(row)
+        return None if row is None else row_to_generation_job(row)
 
     async def get_for_update(self, job_id: int) -> GenerationJob | None:
         """Like `get`, but the caller intends to mutate and `save` within

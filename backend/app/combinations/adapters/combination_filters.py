@@ -1,7 +1,7 @@
 """Shared filter-compilation logic for the combination write repository
-(`bulk_update_status`) and the combination read queries (`list_`) — same
-filter shape used by both per the review/bulk-refine spec's "filter to see,
-then bulk-apply to the filtered set" model.
+(`bulk_update_status`) and the combination reader (`list_`) — same filter
+shape used by both per the review/bulk-refine spec's "filter to see, then
+bulk-apply to the filtered set" model.
 """
 
 from sqlalchemy import Select, exists

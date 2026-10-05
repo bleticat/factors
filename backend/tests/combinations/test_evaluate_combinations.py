@@ -1,6 +1,11 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases
+from app.combinations.use_cases import (
+    CombinationsUseCases,
+    EvaluateCombinationsRequest,
+    ListCombinationsRequest,
+    PatchCombinationRequest,
+)
 from app.shared.errors import ValidationError
 from app.shared.pagination import PageRequest
 from tests.helpers import (
@@ -21,9 +26,11 @@ async def test_full_assignment_returns_exactly_one_match_with_its_current_state(
     await generate_and_wait(database, table_id)
 
     # Mark the target row so we can confirm evaluate reflects live state.
-    page = await CombinationsUseCases(database).list_combinations(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await CombinationsUseCases(database).list_combinations(
+            ListCombinationsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     target = next(
         c
         for c in page.items
@@ -31,20 +38,24 @@ async def test_full_assignment_returns_exactly_one_match_with_its_current_state(
         == {(browser_id, chrome_id), (os_id, windows_id), (login_id, login_in_id)}
     )
     await CombinationsUseCases(database).patch_combination(
-        table_id=table_id,
-        combination_id=target.id,
-        status="possible",
-        output="ok",
-        output_set=True,
+        PatchCombinationRequest(
+            table_id=table_id,
+            combination_id=target.id,
+            status="possible",
+            output="ok",
+            output_set=True,
+        )
     )
 
     result = await CombinationsUseCases(database).evaluate_combinations(
-        table_id=table_id,
-        assignment=(
-            (browser_id, chrome_id),
-            (os_id, windows_id),
-            (login_id, login_in_id),
-        ),
+        EvaluateCombinationsRequest(
+            table_id=table_id,
+            assignment=(
+                (browser_id, chrome_id),
+                (os_id, windows_id),
+                (login_id, login_in_id),
+            ),
+        )
     )
     assert result.kind == "single"
     assert result.combination is not None
@@ -60,9 +71,11 @@ async def test_partial_assignment_returns_consistent_subset(database):
     await generate_and_wait(database, table_id)
 
     result = await CombinationsUseCases(database).evaluate_combinations(
-        table_id=table_id,
-        assignment=((login_id, login_out_id),),
-        page=PageRequest(limit=100),
+        EvaluateCombinationsRequest(
+            table_id=table_id,
+            assignment=((login_id, login_out_id),),
+            page=PageRequest(limit=100),
+        )
     )
     assert result.kind == "list"
     assert result.page is not None
@@ -75,7 +88,9 @@ async def test_empty_assignment_returns_every_combination(database):
     await generate_and_wait(database, table_id)
 
     result = await CombinationsUseCases(database).evaluate_combinations(
-        table_id=table_id, assignment=(), page=PageRequest(limit=100)
+        EvaluateCombinationsRequest(
+            table_id=table_id, assignment=(), page=PageRequest(limit=100)
+        )
     )
     assert result.kind == "list"
     assert result.page.total == 18
@@ -90,12 +105,14 @@ async def test_full_assignment_against_ungenerated_table_returns_none(database):
     # Note: generation never run.
 
     result = await CombinationsUseCases(database).evaluate_combinations(
-        table_id=table_id,
-        assignment=(
-            (browser_id, chrome_id),
-            (os_id, windows_id),
-            (login_id, login_in_id),
-        ),
+        EvaluateCombinationsRequest(
+            table_id=table_id,
+            assignment=(
+                (browser_id, chrome_id),
+                (os_id, windows_id),
+                (login_id, login_in_id),
+            ),
+        )
     )
     assert result.kind == "single"
     assert result.combination is None
@@ -111,7 +128,9 @@ async def test_single_factor_table_full_assignment_is_one_pair(database):
     await generate_and_wait(database, table_id)
 
     result = await CombinationsUseCases(database).evaluate_combinations(
-        table_id=table_id, assignment=((factor_id, value_ids[0]),)
+        EvaluateCombinationsRequest(
+            table_id=table_id, assignment=((factor_id, value_ids[0]),)
+        )
     )
     assert result.kind == "single"
     assert result.combination is not None
@@ -124,7 +143,7 @@ async def test_assignment_pair_with_unknown_factor_is_rejected(database):
 
     with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
-            table_id=table_id, assignment=((999, 1),)
+            EvaluateCombinationsRequest(table_id=table_id, assignment=((999, 1),))
         )
 
 
@@ -137,7 +156,9 @@ async def test_assignment_pair_with_value_not_belonging_to_factor_is_rejected(da
 
     with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
-            table_id=table_id, assignment=((browser_id, os_value_id),)
+            EvaluateCombinationsRequest(
+                table_id=table_id, assignment=((browser_id, os_value_id),)
+            )
         )
 
 
@@ -150,6 +171,8 @@ async def test_assignment_with_duplicate_factor_is_rejected(database):
 
     with pytest.raises(ValidationError):
         await CombinationsUseCases(database).evaluate_combinations(
-            table_id=table_id,
-            assignment=((browser_id, chrome_id), (browser_id, firefox_id)),
+            EvaluateCombinationsRequest(
+                table_id=table_id,
+                assignment=((browser_id, chrome_id), (browser_id, firefox_id)),
+            )
         )

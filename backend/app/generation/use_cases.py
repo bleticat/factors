@@ -1,4 +1,9 @@
-"""Use cases for the `generation` module."""
+"""Use cases for the `generation` module. Every public method takes one
+`...Request` and returns one `...Response` wrapping the real
+`GenerationJob` entity straight from the repository/reader — there's no
+separate "DTO"/"Ref" mirror of a `GenerationJob`'s fields."""
+
+from dataclasses import dataclass
 
 from app.combinations.entities import (
     Combination,
@@ -12,10 +17,79 @@ from app.generation.entities import (
     GenerationJob,
     GenerationJobStatus,
 )
-from app.generation.ports.generation_job_reader import GenerationJobDTO
-from app.generation.service import GenerationJobRef, to_ref
 from app.shared.errors import InvariantViolationError, NotFoundError
 from app.shared.ports.database import Database
+
+# --- Requests/responses -------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RequestGenerationRequest:
+    table_id: int
+    max_combinations: int
+
+
+@dataclass(frozen=True)
+class RequestGenerationResponse:
+    job: GenerationJob
+
+
+@dataclass(frozen=True)
+class CancelGenerationJobRequest:
+    job_id: int
+
+
+@dataclass(frozen=True)
+class CancelGenerationJobResponse:
+    job: GenerationJob
+
+
+@dataclass(frozen=True)
+class MarkGenerationJobFailedRequest:
+    job_id: int
+    error_message: str
+
+
+@dataclass(frozen=True)
+class MarkGenerationJobFailedResponse:
+    job: GenerationJob
+
+
+@dataclass(frozen=True)
+class MarkStaleGenerationJobsFailedRequest:
+    job_ids: list[int] | None = None
+    error_message: str = "Interrupted by server restart"
+
+
+@dataclass(frozen=True)
+class MarkStaleGenerationJobsFailedResponse:
+    updated_count: int
+
+
+@dataclass(frozen=True)
+class GenerateCombinationsBatchRequest:
+    job_id: int
+    batch_size: int = 500
+
+
+@dataclass(frozen=True)
+class GenerateCombinationsBatchResponse:
+    job: GenerationJob
+
+
+@dataclass(frozen=True)
+class GetGenerationJobRequest:
+    job_id: int
+
+
+@dataclass(frozen=True)
+class GetGenerationJobResponse:
+    job: GenerationJob
+
+
+@dataclass(frozen=True)
+class ListStaleRunningGenerationJobsResponse:
+    job_ids: list[int]
 
 
 class GenerationUseCases:
@@ -28,8 +102,8 @@ class GenerationUseCases:
     # --- Writes ---------------------------------------------------------------
 
     async def request_generation(
-        self, table_id: int, *, max_combinations: int
-    ) -> GenerationJobRef:
+        self, request: RequestGenerationRequest
+    ) -> RequestGenerationResponse:
         """Start generating combinations for a decision table: deletes any
         existing combinations (delete-and-recreate semantics, spec 002) and
         creates a pending job for the background worker to drive.
@@ -41,45 +115,47 @@ class GenerationUseCases:
                 the projected combination count exceeds `max_combinations`.
         """
         async with self._database.transaction() as db:
-            table = await db.tables.get(table_id)
+            table = await db.tables.get(request.table_id)
             if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
+                raise NotFoundError(f"Decision table {request.table_id} not found")
             if not table.factors:
                 raise InvariantViolationError(
-                    f"Decision table {table_id} has no factors"
+                    f"Decision table {request.table_id} has no factors"
                 )
             for factor in table.factors:
                 if not factor.values:
                     raise InvariantViolationError(
                         f"Factor {factor.id or 0} has no values"
                     )
-            if await db.jobs.has_active_job(table_id):
+            if await db.jobs.has_active_job(request.table_id):
                 raise InvariantViolationError(
-                    f"Decision table {table_id} already has a generation job "
-                    "in progress"
+                    f"Decision table {request.table_id} already has a "
+                    "generation job in progress"
                 )
 
             total = total_combinations([len(f.values) for f in table.factors])
-            if total > max_combinations:
+            if total > request.max_combinations:
                 raise InvariantViolationError(
                     f"Projected combination count {total} exceeds the maximum "
-                    f"of {max_combinations}"
+                    f"of {request.max_combinations}"
                 )
 
             # Delete-and-recreate regeneration semantics (v1 scope, see spec 002).
-            await db.combinations.delete_all_for_table(table_id)
+            await db.combinations.delete_all_for_table(request.table_id)
 
             job = await db.jobs.add(
                 GenerationJob(
                     id=None,
-                    decision_table_id=table_id,
+                    decision_table_id=request.table_id,
                     status=GenerationJobStatus.PENDING,
                     total_combinations=total,
                 )
             )
-            return to_ref(job)
+            return RequestGenerationResponse(job=job)
 
-    async def cancel_generation_job(self, job_id: int) -> GenerationJobRef:
+    async def cancel_generation_job(
+        self, request: CancelGenerationJobRequest
+    ) -> CancelGenerationJobResponse:
         """Cancel an active generation job.
 
         Raises:
@@ -87,42 +163,46 @@ class GenerationUseCases:
             InvariantViolationError: if the job is already terminal.
         """
         async with self._database.transaction() as db:
-            job = await db.jobs.get(job_id)
+            job = await db.jobs.get(request.job_id)
             if job is None:
-                raise NotFoundError(f"Generation job {job_id} not found")
+                raise NotFoundError(f"Generation job {request.job_id} not found")
             job.cancel()  # raises InvariantViolationError if already terminal
             await db.jobs.save(job)
-            return to_ref(job)
+            return CancelGenerationJobResponse(job=job)
 
     async def mark_generation_job_failed(
-        self, job_id: int, error_message: str
-    ) -> GenerationJobRef:
-        """Mark a generation job failed with `error_message`.
+        self, request: MarkGenerationJobFailedRequest
+    ) -> MarkGenerationJobFailedResponse:
+        """Mark a generation job failed with `request.error_message`.
 
         Raises:
             NotFoundError: if `job_id` doesn't exist.
         """
         async with self._database.transaction() as db:
-            job = await db.jobs.get(job_id)
+            job = await db.jobs.get(request.job_id)
             if job is None:
-                raise NotFoundError(f"Generation job {job_id} not found")
-            job.fail(error_message)
+                raise NotFoundError(f"Generation job {request.job_id} not found")
+            job.fail(request.error_message)
             await db.jobs.save(job)
-            return to_ref(job)
+            return MarkGenerationJobFailedResponse(job=job)
 
     async def mark_stale_generation_jobs_failed(
         self,
-        job_ids: list[int] | None = None,
-        error_message: str = "Interrupted by server restart",
-    ) -> int:
+        request: MarkStaleGenerationJobsFailedRequest = (
+            MarkStaleGenerationJobsFailedRequest()
+        ),
+    ) -> MarkStaleGenerationJobsFailedResponse:
         """Bulk-fail the given jobs (used to sweep jobs left `running` by a
-        crashed process at startup). Returns how many rows were updated."""
+        crashed process at startup)."""
         async with self._database.transaction() as db:
-            return await db.jobs.mark_failed_bulk(job_ids or [], error_message)
+            updated = await db.jobs.mark_failed_bulk(
+                request.job_ids or [], request.error_message
+            )
+            return MarkStaleGenerationJobsFailedResponse(updated_count=updated)
 
     async def generate_combinations_batch(
-        self, job_id: int, batch_size: int = 500
-    ) -> GenerationJobRef:
+        self, request: GenerateCombinationsBatchRequest
+    ) -> GenerateCombinationsBatchResponse:
         """The batching use case at the heart of the generation design (see
         the plan's "The async-job design" section and spec 002).
         One call = one unit of work = one transaction = one commit. The
@@ -139,13 +219,13 @@ class GenerationUseCases:
             # this method (and the loop driving it) carries no state of
             # its own and can safely resume after a crash or observe a
             # concurrent cancel (see spec 002).
-            job = await db.jobs.get_for_update(job_id)
+            job = await db.jobs.get_for_update(request.job_id)
             if job is None:
-                raise NotFoundError(f"Generation job {job_id} not found")
+                raise NotFoundError(f"Generation job {request.job_id} not found")
 
             if job.status in TERMINAL_STATUSES:
                 # Idempotent no-op: already completed/failed/cancelled.
-                return to_ref(job)
+                return GenerateCombinationsBatchResponse(job=job)
 
             job.start()
 
@@ -156,7 +236,7 @@ class GenerationUseCases:
             ordered_factors = table.ordered_factors()
             value_counts = [len(f.values) for f in ordered_factors]
 
-            batch_end = min(job.cursor + batch_size, job.total_combinations)
+            batch_end = min(job.cursor + request.batch_size, job.total_combinations)
             new_combinations = [
                 self._build_combination(
                     job.decision_table_id,
@@ -172,7 +252,7 @@ class GenerationUseCases:
             job.record_batch(new_cursor=batch_end, rows_created=len(new_combinations))
             await db.jobs.save(job)
 
-            return to_ref(job)
+            return GenerateCombinationsBatchResponse(job=job)
 
     @staticmethod
     def _build_combination(
@@ -199,20 +279,25 @@ class GenerationUseCases:
 
     # --- Reads ------------------------------------------------------------------
 
-    async def get_generation_job(self, job_id: int) -> GenerationJobDTO:
+    async def get_generation_job(
+        self, request: GetGenerationJobRequest
+    ) -> GetGenerationJobResponse:
         """Return a generation job's current status and progress.
 
         Raises:
             NotFoundError: if `job_id` doesn't exist.
         """
         async with self._database.snapshot() as db:
-            job = await db.jobs_reader.get(job_id)
+            job = await db.jobs.get(request.job_id)
             if job is None:
-                raise NotFoundError(f"Generation job {job_id} not found")
-            return job
+                raise NotFoundError(f"Generation job {request.job_id} not found")
+            return GetGenerationJobResponse(job=job)
 
-    async def list_stale_running_generation_jobs(self) -> list[int]:
+    async def list_stale_running_generation_jobs(
+        self,
+    ) -> ListStaleRunningGenerationJobsResponse:
         """Return the ids of jobs left `running` by a previous process that
         crashed or was killed (used by the startup sweep)."""
         async with self._database.snapshot() as db:
-            return await db.jobs_reader.list_stale_running()
+            job_ids = await db.jobs_reader.list_stale_running()
+            return ListStaleRunningGenerationJobsResponse(job_ids=job_ids)

@@ -1,4 +1,4 @@
-"""Internal helper logic `tables.commands` delegates to. Not part of the
+"""Internal helper logic `tables.use_cases` delegates to. Not part of the
 module's public request/response surface."""
 
 from app.generation.ports.generation_job_repository import GenerationJobRepository

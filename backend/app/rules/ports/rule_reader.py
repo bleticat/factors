@@ -1,48 +1,29 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime
+"""Read-side port for `Rule` list views.
 
+`Rule` itself (the entity) now carries every field a reader needs
+(`created_at`, `shadowed_count` included — see `entities.py`), so there is
+no separate read-model type here: `list_for_table`/`list_all_for_table`
+return `Rule` entities directly. A single rule by id is loaded the same
+way for both reads and writes — `RuleRepository.get` — so this port has no
+`get` of its own.
+"""
+
+from abc import ABC, abstractmethod
+
+from app.rules.entities import Rule
 from app.shared.pagination import Page, PageRequest
 
 
-@dataclass(frozen=True)
-class RuleValueDTO:
-    factor_id: int
-    factor_value_id: int
-
-
-@dataclass(frozen=True)
-class RuleDTO:
-    id: int
-    decision_table_id: int
-    output: str
-    title: str | None = None
-    order_index: int = 0
-    factor_values: list[RuleValueDTO] = field(default_factory=list)
-    matched_count: int = 0
-    applied_at: datetime | None = None
-    created_at: datetime | None = None
-    # How many of this rule's own matched rows are shadowed by a rule later
-    # in apply order (spec 009) — i.e. currently show a *different* rule's
-    # output. Filled in by `ListRulesHandler`; always 0 straight from
-    # `RuleReader` (a read-only-rules port has no combination access).
-    shadowed_count: int = 0
-
-
 class RuleReader(ABC):
-    """Read-side port for `Rule`."""
+    """Read-side port for `Rule` list views."""
 
     @abstractmethod
-    async def list_for_table(self, table_id: int, page: PageRequest) -> Page[RuleDTO]:
+    async def list_for_table(self, table_id: int, page: PageRequest) -> Page[Rule]:
         """Return a page of a decision table's rules, ordered by `order_index`."""
 
     @abstractmethod
-    async def get(self, table_id: int, rule_id: int) -> RuleDTO | None:
-        """Return one rule, or None if it doesn't exist on this table."""
-
-    @abstractmethod
-    async def list_all_for_table(self, table_id: int) -> list[RuleDTO]:
+    async def list_all_for_table(self, table_id: int) -> list[Rule]:
         """Unpaginated, ordered by `order_index` — the same order rules are
         (re)applied in (spec 008; was creation/id order before it). Used by
-        `ListRuleOverlapsQuery` (spec 006), which needs every rule's
+        `list_rule_overlaps` (spec 006), which needs every rule's
         assignment to compute overlaps, not one page."""

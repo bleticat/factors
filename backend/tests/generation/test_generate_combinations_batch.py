@@ -1,5 +1,8 @@
-from app.combinations.use_cases import CombinationsUseCases
-from app.generation.use_cases import GenerationUseCases
+from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
+from app.generation.use_cases import (
+    GenerateCombinationsBatchRequest,
+    GenerationUseCases,
+)
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
@@ -13,9 +16,11 @@ async def test_batching_to_completion_produces_all_combinations_once_each(databa
     assert result.created_count == 18
     assert result.total_combinations == 18
 
-    page = await CombinationsUseCases(database).list_combinations(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await CombinationsUseCases(database).list_combinations(
+            ListCombinationsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 18
 
     signatures = set()
@@ -35,15 +40,19 @@ async def test_batch_command_is_idempotent_after_completion(database):
     assert completed.status == "completed"
 
     # Calling again must be a no-op, not create more rows.
-    again = await GenerationUseCases(database).generate_combinations_batch(
-        job_id=completed.id, batch_size=5
-    )
+    again = (
+        await GenerationUseCases(database).generate_combinations_batch(
+            GenerateCombinationsBatchRequest(job_id=completed.id, batch_size=5)
+        )
+    ).job
     assert again.status == "completed"
     assert again.created_count == 18
 
-    page = await CombinationsUseCases(database).list_combinations(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await CombinationsUseCases(database).list_combinations(
+            ListCombinationsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 18
 
 
@@ -58,7 +67,9 @@ async def test_regenerating_replaces_previous_combinations(database):
     assert second.status == "completed"
     assert second.created_count == 18
 
-    page = await CombinationsUseCases(database).list_combinations(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await CombinationsUseCases(database).list_combinations(
+            ListCombinationsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 18  # not 36 — old combinations were deleted, not accumulated

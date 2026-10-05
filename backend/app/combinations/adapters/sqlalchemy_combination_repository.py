@@ -12,7 +12,7 @@ from app.combinations.ports.combination_repository import (
 )
 
 
-def _to_domain(row: CombinationRow) -> Combination:
+def row_to_combination(row: CombinationRow) -> Combination:
     return Combination(
         id=row.id,
         decision_table_id=row.decision_table_id,
@@ -74,7 +74,7 @@ class SqlAlchemyCombinationRepository(CombinationRepository):
             .options(selectinload(CombinationRow.values))
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
-        return None if row is None else _to_domain(row)
+        return None if row is None else row_to_combination(row)
 
     async def save(self, combination: Combination) -> None:
         """Persist status/output/impossible_reason for one already-existing

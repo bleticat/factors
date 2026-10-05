@@ -9,7 +9,7 @@ from app.rules.entities import Rule, RuleAssignment
 from app.rules.ports.rule_repository import RuleRepository
 
 
-def _to_domain(row: RuleRow) -> Rule:
+def row_to_rule(row: RuleRow) -> Rule:
     return Rule(
         id=row.id,
         decision_table_id=row.decision_table_id,
@@ -22,6 +22,7 @@ def _to_domain(row: RuleRow) -> Rule:
         ],
         matched_count=row.matched_count,
         applied_at=row.applied_at,
+        created_at=row.created_at,
     )
 
 
@@ -60,6 +61,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             factor_values=list(rule.factor_values),
             matched_count=row.matched_count,
             applied_at=row.applied_at,
+            created_at=row.created_at,
         )
 
     async def save(self, rule: Rule) -> None:
@@ -97,7 +99,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             .options(selectinload(RuleRow.values))
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
-        return None if row is None else _to_domain(row)
+        return None if row is None else row_to_rule(row)
 
     async def list_for_table(self, table_id: int) -> list[Rule]:
         """Return every rule for a table, ordered by `order_index`."""
@@ -108,7 +110,7 @@ class SqlAlchemyRuleRepository(RuleRepository):
             .order_by(RuleRow.order_index, RuleRow.id)
         )
         rows = (await self._session.execute(stmt)).scalars().all()
-        return [_to_domain(row) for row in rows]
+        return [row_to_rule(row) for row in rows]
 
     async def delete(self, table_id: int, rule_id: int) -> bool:
         """Delete a rule. Returns whether a matching rule was found and deleted."""

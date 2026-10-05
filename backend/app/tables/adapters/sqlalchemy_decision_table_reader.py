@@ -3,13 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.shared.pagination import Page, PageRequest
-from app.tables.adapters.orm import DecisionTableRow, FactorRow
+from app.tables.adapters.orm import DecisionTableRow
 from app.tables.ports.decision_table_reader import (
-    DecisionTableDTO,
     DecisionTableReader,
-    DecisionTableSummaryDTO,
-    FactorDTO,
-    FactorValueDTO,
+    DecisionTableSummary,
 )
 
 
@@ -17,40 +14,7 @@ class SqlAlchemyDecisionTableReader(DecisionTableReader):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get(self, table_id: int) -> DecisionTableDTO | None:
-        """Return a decision table with its factors and values, or None if
-        `table_id` doesn't exist."""
-        stmt = (
-            select(DecisionTableRow)
-            .where(DecisionTableRow.id == table_id)
-            .options(
-                selectinload(DecisionTableRow.factors).selectinload(FactorRow.values)
-            )
-        )
-        row = (await self._session.execute(stmt)).scalar_one_or_none()
-        if row is None:
-            return None
-        return DecisionTableDTO(
-            id=row.id,
-            name=row.name,
-            description=row.description,
-            factors=[
-                FactorDTO(
-                    id=f.id,
-                    name=f.name,
-                    order_index=f.order_index,
-                    values=[
-                        FactorValueDTO(
-                            id=v.id, value=v.value, order_index=v.order_index
-                        )
-                        for v in f.values
-                    ],
-                )
-                for f in row.factors
-            ],
-        )
-
-    async def list_summaries(self, page: PageRequest) -> Page[DecisionTableSummaryDTO]:
+    async def list_summaries(self, page: PageRequest) -> Page[DecisionTableSummary]:
         """Return a page of decision table summaries, most recently created first."""
         total = (
             await self._session.execute(
@@ -71,7 +35,7 @@ class SqlAlchemyDecisionTableReader(DecisionTableReader):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         items = [
-            DecisionTableSummaryDTO(
+            DecisionTableSummary(
                 id=row.id,
                 name=row.name,
                 description=row.description,

@@ -1,4 +1,9 @@
-from app.rules.use_cases import RulesUseCases
+from app.rules.use_cases import (
+    CreateRuleRequest,
+    ListRuleOverlapsRequest,
+    ReorderRulesRequest,
+    RulesUseCases,
+)
 from app.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
@@ -10,18 +15,30 @@ async def test_overlap_returns_only_rows_matched_by_both_rules(database):
     os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
     await generate_and_wait(database, table_id)
 
-    broad = await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad"
-    )
-    narrow = await RulesUseCases(database).create_rule(
-        table_id=table_id,
-        factor_values=((browser_id, chrome_id), (os_id, windows_id)),
-        output="narrow",
-    )
+    broad = (
+        await RulesUseCases(database).create_rule(
+            CreateRuleRequest(
+                table_id=table_id,
+                factor_values=((browser_id, chrome_id),),
+                output="broad",
+            )
+        )
+    ).rule
+    narrow = (
+        await RulesUseCases(database).create_rule(
+            CreateRuleRequest(
+                table_id=table_id,
+                factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+                output="narrow",
+            )
+        )
+    ).rule
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 2  # Chrome x Windows x {in, out}
     for item in page.items:
         rule_ids = [r.id for r in item.matching_rules]
@@ -43,22 +60,34 @@ async def test_overlap_winner_follows_apply_order_after_a_reorder(database):
     os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
     await generate_and_wait(database, table_id)
 
-    broad = await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad"
-    )
-    narrow = await RulesUseCases(database).create_rule(
-        table_id=table_id,
-        factor_values=((browser_id, chrome_id), (os_id, windows_id)),
-        output="narrow",
-    )
+    broad = (
+        await RulesUseCases(database).create_rule(
+            CreateRuleRequest(
+                table_id=table_id,
+                factor_values=((browser_id, chrome_id),),
+                output="broad",
+            )
+        )
+    ).rule
+    narrow = (
+        await RulesUseCases(database).create_rule(
+            CreateRuleRequest(
+                table_id=table_id,
+                factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+                output="narrow",
+            )
+        )
+    ).rule
     # Reorder so `broad` (the lower id) now applies *after* `narrow`.
     await RulesUseCases(database).reorder_rules(
-        table_id=table_id, ordered_rule_ids=(narrow.id, broad.id)
+        ReorderRulesRequest(table_id=table_id, ordered_rule_ids=(narrow.id, broad.id))
     )
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 2
     for item in page.items:
         rule_ids = [r.id for r in item.matching_rules]
@@ -80,23 +109,31 @@ async def test_overlap_excludes_rows_only_matched_by_a_disjoint_rule(database):
     await generate_and_wait(database, table_id)
 
     await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad"
+        CreateRuleRequest(
+            table_id=table_id, factor_values=((browser_id, chrome_id),), output="broad"
+        )
     )
     await RulesUseCases(database).create_rule(
-        table_id=table_id,
-        factor_values=((browser_id, chrome_id), (os_id, windows_id)),
-        output="narrow",
+        CreateRuleRequest(
+            table_id=table_id,
+            factor_values=((browser_id, chrome_id), (os_id, windows_id)),
+            output="narrow",
+        )
     )
     # Disjoint from the other two: a different browser entirely.
     await RulesUseCases(database).create_rule(
-        table_id=table_id,
-        factor_values=((browser_id, firefox_id),),
-        output="disjoint",
+        CreateRuleRequest(
+            table_id=table_id,
+            factor_values=((browser_id, firefox_id),),
+            output="disjoint",
+        )
     )
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 2
     for item in page.items:
         assert {r.output for r in item.matching_rules} == {"broad", "narrow"}
@@ -109,15 +146,19 @@ async def test_overlap_with_default_rule_only_flags_the_narrow_rules_rows(databa
     await generate_and_wait(database, table_id)
 
     await RulesUseCases(database).create_rule(
-        table_id=table_id, output="default"
+        CreateRuleRequest(table_id=table_id, output="default")
     )  # matches all 18
     await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((browser_id, chrome_id),), output="chrome"
+        CreateRuleRequest(
+            table_id=table_id, factor_values=((browser_id, chrome_id),), output="chrome"
+        )
     )
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 6  # only the Chrome rows satisfy both rules
     for item in page.items:
         assert {r.output for r in item.matching_rules} == {"default", "chrome"}
@@ -130,22 +171,32 @@ async def test_overlap_paginates_across_a_page_boundary(database):
     await generate_and_wait(database, table_id)
 
     await RulesUseCases(database).create_rule(
-        table_id=table_id, output="default"
+        CreateRuleRequest(table_id=table_id, output="default")
     )  # matches all 18
     # Refines the default rule (login has only 2 values, so this is the
     # broadest possible non-empty refinement on this table): 9 rows.
     await RulesUseCases(database).create_rule(
-        table_id=table_id,
-        factor_values=((login_id, login_in_id),),
-        output="signed in",
+        CreateRuleRequest(
+            table_id=table_id,
+            factor_values=((login_id, login_in_id),),
+            output="signed in",
+        )
     )
 
-    first_page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=5, offset=0)
-    )
-    second_page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=5, offset=5)
-    )
+    first_page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(
+                table_id=table_id, page=PageRequest(limit=5, offset=0)
+            )
+        )
+    ).page
+    second_page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(
+                table_id=table_id, page=PageRequest(limit=5, offset=5)
+            )
+        )
+    ).page
     assert first_page.total == second_page.total == 9
     assert len(first_page.items) == 5
     assert len(second_page.items) == 4
@@ -159,15 +210,21 @@ async def test_overlap_empty_with_fewer_than_two_rules(database):
     table_id = fixture["table_id"]
     await generate_and_wait(database, table_id)
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 0
 
-    await RulesUseCases(database).create_rule(table_id=table_id, output="only one")
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
+    await RulesUseCases(database).create_rule(
+        CreateRuleRequest(table_id=table_id, output="only one")
     )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 0
 
 
@@ -178,15 +235,21 @@ async def test_overlap_empty_when_never_generated(database):
     os_id, windows_id = fixture["os_id"], fixture["os_values"][0]
 
     await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((browser_id, chrome_id),), output="a"
+        CreateRuleRequest(
+            table_id=table_id, factor_values=((browser_id, chrome_id),), output="a"
+        )
     )
     await RulesUseCases(database).create_rule(
-        table_id=table_id, factor_values=((os_id, windows_id),), output="b"
+        CreateRuleRequest(
+            table_id=table_id, factor_values=((os_id, windows_id),), output="b"
+        )
     )
 
-    page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=table_id, page=PageRequest(limit=100)
-    )
+    page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(table_id=table_id, page=PageRequest(limit=100))
+        )
+    ).page
     assert page.total == 0
 
 
@@ -199,17 +262,25 @@ async def test_overlap_never_crosses_tables(database):
     browser_id, chrome_id = fixture_a["browser_id"], fixture_a["browser_values"][0]
     os_id, windows_id = fixture_a["os_id"], fixture_a["os_values"][0]
     await RulesUseCases(database).create_rule(
-        table_id=fixture_a["table_id"],
-        factor_values=((browser_id, chrome_id),),
-        output="a1",
+        CreateRuleRequest(
+            table_id=fixture_a["table_id"],
+            factor_values=((browser_id, chrome_id),),
+            output="a1",
+        )
     )
     await RulesUseCases(database).create_rule(
-        table_id=fixture_a["table_id"],
-        factor_values=((os_id, windows_id),),
-        output="a2",
+        CreateRuleRequest(
+            table_id=fixture_a["table_id"],
+            factor_values=((os_id, windows_id),),
+            output="a2",
+        )
     )
 
-    b_page = await RulesUseCases(database).list_rule_overlaps(
-        table_id=fixture_b["table_id"], page=PageRequest(limit=100)
-    )
+    b_page = (
+        await RulesUseCases(database).list_rule_overlaps(
+            ListRuleOverlapsRequest(
+                table_id=fixture_b["table_id"], page=PageRequest(limit=100)
+            )
+        )
+    ).page
     assert b_page.total == 0

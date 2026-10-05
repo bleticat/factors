@@ -6,13 +6,15 @@ from sqlalchemy.orm import selectinload
 
 from app.combinations.adapters.combination_filters import apply_combination_filter
 from app.combinations.adapters.orm import CombinationRow
+from app.combinations.adapters.sqlalchemy_combination_repository import (
+    row_to_combination,
+)
+from app.combinations.entities import Combination
 from app.combinations.ports.combination_reader import (
-    CombinationDTO,
-    CombinationOverlapDTO,
+    CombinationOverlap,
     CombinationReader,
-    CombinationValueDTO,
     RuleFilterInput,
-    RuleTagDTO,
+    RuleTag,
 )
 from app.combinations.ports.combination_repository import (
     CombinationFilter,
@@ -21,29 +23,13 @@ from app.combinations.ports.combination_repository import (
 from app.shared.pagination import Page, PageRequest
 
 
-def _to_dto(row: CombinationRow) -> CombinationDTO:
-    return CombinationDTO(
-        id=row.id,
-        decision_table_id=row.decision_table_id,
-        status=row.status,
-        output=row.output,
-        impossible_reason=row.impossible_reason,
-        values=[
-            CombinationValueDTO(
-                factor_id=v.factor_id, factor_value_id=v.factor_value_id
-            )
-            for v in row.values
-        ],
-    )
-
-
 class SqlAlchemyCombinationReader(CombinationReader):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def list_(
         self, table_id: int, filter_: CombinationFilter, page: PageRequest
-    ) -> Page[CombinationDTO]:
+    ) -> Page[Combination]:
         """Return a page of a decision table's combinations matching `filter_`."""
         count_stmt = apply_combination_filter(
             select(func.count(CombinationRow.id.distinct())), table_id, filter_
@@ -59,28 +45,15 @@ class SqlAlchemyCombinationReader(CombinationReader):
         )
         rows = (await self._session.execute(stmt)).scalars().all()
         return Page(
-            items=[_to_dto(row) for row in rows],
+            items=[row_to_combination(row) for row in rows],
             total=total,
             limit=page.limit,
             offset=page.offset,
         )
 
-    async def get(self, table_id: int, combination_id: int) -> CombinationDTO | None:
-        """Return one combination, or None if it doesn't exist on this table."""
-        stmt = (
-            select(CombinationRow)
-            .where(
-                CombinationRow.id == combination_id,
-                CombinationRow.decision_table_id == table_id,
-            )
-            .options(selectinload(CombinationRow.values))
-        )
-        row = (await self._session.execute(stmt)).scalar_one_or_none()
-        return None if row is None else _to_dto(row)
-
     async def find_by_exact_assignment(
         self, table_id: int, assignment: list[tuple[int, int]]
-    ) -> CombinationDTO | None:
+    ) -> Combination | None:
         """Full-assignment evaluate: the assignment covers every factor of
         the table, so at most one combination can match."""
         filter_ = CombinationFilter(
@@ -95,11 +68,11 @@ class SqlAlchemyCombinationReader(CombinationReader):
             select(CombinationRow), table_id, filter_
         ).options(selectinload(CombinationRow.values))
         row = (await self._session.execute(stmt)).scalar_one_or_none()
-        return None if row is None else _to_dto(row)
+        return None if row is None else row_to_combination(row)
 
     async def list_matched_by_multiple_rules(
         self, table_id: int, rules: list[RuleFilterInput], page: PageRequest
-    ) -> Page[CombinationOverlapDTO]:
+    ) -> Page[CombinationOverlap]:
         """Rows matched by 2+ of the given rules' assignments (spec 006).
         Callers pass every rule for the table; a caller passing fewer than
         two rules gets an empty page back."""
@@ -158,7 +131,7 @@ class SqlAlchemyCombinationReader(CombinationReader):
             .scalars()
             .all()
         )
-        combos_by_id = {row.id: _to_dto(row) for row in combo_rows}
+        combos_by_id = {row.id: row_to_combination(row) for row in combo_rows}
 
         matching_rule_ids: dict[int, set[int]] = defaultdict(set)
         tag_rows = await session.execute(
@@ -176,10 +149,10 @@ class SqlAlchemyCombinationReader(CombinationReader):
         rules_by_id = {rule.rule_id: rule for rule in rules}
         apply_position = {rule.rule_id: position for position, rule in enumerate(rules)}
         items = [
-            CombinationOverlapDTO(
+            CombinationOverlap(
                 combination=combos_by_id[combination_id],
                 matching_rules=[
-                    RuleTagDTO(
+                    RuleTag(
                         id=rule_id,
                         output=rules_by_id[rule_id].output,
                         title=rules_by_id[rule_id].title,

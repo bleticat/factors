@@ -3,10 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.generation.adapters.orm import GenerationJobRow
 from app.generation.entities import GenerationJobStatus
-from app.generation.ports.generation_job_reader import (
-    GenerationJobDTO,
-    GenerationJobReader,
-)
+from app.generation.ports.generation_job_reader import GenerationJobReader
 
 
 class SqlAlchemyGenerationJobReader(GenerationJobReader):
@@ -21,18 +18,3 @@ class SqlAlchemyGenerationJobReader(GenerationJobReader):
         )
         result = await self._session.execute(stmt)
         return [row[0] for row in result.all()]
-
-    async def get(self, job_id: int) -> GenerationJobDTO | None:
-        """Return a job's current status and progress, or None if
-        `job_id` doesn't exist."""
-        row = await self._session.get(GenerationJobRow, job_id)
-        if row is None:
-            return None
-        return GenerationJobDTO(
-            id=row.id,
-            decision_table_id=row.decision_table_id,
-            status=row.status,
-            total_combinations=row.total_combinations,
-            created_count=row.created_count,
-            error_message=row.error_message,
-        )
