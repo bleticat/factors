@@ -49,17 +49,28 @@ class SqlAlchemyDatabase(Database):
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[DataAccess]:
         """Open one database transaction and yield a `DataAccess` bound to
-        it; commits on clean exit, rolls back on exception."""
+        it; commits on clean exit, rolls back on exception. The yielded
+        `DataAccess` is deactivated the instant the caller's `async with`
+        block exits — any later use of a `db` reference kept past that
+        point raises `RuntimeError` rather than running against a session
+        that's already been committed and closed (see
+        `SqlAlchemyDataAccess._deactivate`)."""
         async with self._session_factory() as session, session.begin():
-            yield SqlAlchemyDataAccess(session)
+            data_access = SqlAlchemyDataAccess(session)
+            try:
+                yield data_access
+            finally:
+                data_access._deactivate()
 
     @asynccontextmanager
     async def snapshot(self) -> AsyncIterator[DataAccess]:
         """Open one consistent read-only view and yield a `DataAccess`
         bound to it; always rolls back, even if a query mistakenly writes
-        through it."""
+        through it. Deactivated on exit, same as `transaction()` above."""
         async with self._session_factory() as session:
+            data_access = SqlAlchemyDataAccess(session)
             try:
-                yield SqlAlchemyDataAccess(session)
+                yield data_access
             finally:
+                data_access._deactivate()
                 await session.rollback()
