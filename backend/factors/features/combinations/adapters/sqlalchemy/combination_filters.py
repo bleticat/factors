@@ -1,7 +1,7 @@
 from sqlalchemy import Select, exists
 from sqlalchemy.sql import ColumnElement
 
-from factors.features.combinations.adapters.orm import (
+from factors.features.combinations.adapters.sqlalchemy.orm import (
     CombinationRow,
     CombinationValueRow,
 )

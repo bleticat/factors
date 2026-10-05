@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 
-from factors.features.tables.api import schemas
+from factors.features.tables.adapters.fastapi import schemas
 from factors.features.tables.use_cases import (
     AddFactorRequest,
     AddFactorValueRequest,

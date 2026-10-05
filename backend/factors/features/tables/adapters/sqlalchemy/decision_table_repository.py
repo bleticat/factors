@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.tables.adapters.orm import (
+from factors.features.tables.adapters.sqlalchemy.orm import (
     DecisionTableRow,
     FactorRow,
     FactorValueRow,

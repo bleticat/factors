@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 
-from factors.features.rules.api import schemas
+from factors.features.rules.adapters.fastapi import schemas
 from factors.features.rules.use_cases import (
     CreateRuleRequest,
     DeleteRuleRequest,

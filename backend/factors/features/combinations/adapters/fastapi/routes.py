@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request
 
-from factors.features.combinations.api import schemas
+from factors.features.combinations.adapters.fastapi import schemas
 from factors.features.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchCombinationsRequest,

@@ -9,12 +9,16 @@ from alembic import context
 from factors.config import settings
 
 # Import the ORM mappings so they register on Base.metadata before
-# autogenerate diffs against it. Add a new module's `adapters.orm` import
-# here too if a future module introduces one.
-from factors.features.combinations.adapters import orm as combinations_orm  # noqa: F401
-from factors.features.generation.adapters import orm as generation_orm  # noqa: F401
-from factors.features.rules.adapters import orm as rules_orm  # noqa: F401
-from factors.features.tables.adapters import orm as tables_orm  # noqa: F401
+# autogenerate diffs against it. Add a new module's `adapters.sqlalchemy.orm`
+# import here too if a future module introduces one.
+from factors.features.combinations.adapters.sqlalchemy import (
+    orm as combinations_orm,  # noqa: F401
+)
+from factors.features.generation.adapters.sqlalchemy import (
+    orm as generation_orm,  # noqa: F401
+)
+from factors.features.rules.adapters.sqlalchemy import orm as rules_orm  # noqa: F401
+from factors.features.tables.adapters.sqlalchemy import orm as tables_orm  # noqa: F401
 from factors.shared.adapters.orm_base import Base
 
 # this is the Alembic Config object, which provides

@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.tables.adapters.orm import DecisionTableRow
+from factors.features.tables.adapters.sqlalchemy.orm import DecisionTableRow
 from factors.features.tables.ports.decision_table_reader import (
     DecisionTableReader,
     DecisionTableSummary,

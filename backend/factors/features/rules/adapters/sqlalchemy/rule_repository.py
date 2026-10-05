@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.rules.adapters.orm import RuleRow, RuleValueRow
+from factors.features.rules.adapters.sqlalchemy.orm import RuleRow, RuleValueRow
 from factors.features.rules.entities import Rule, RuleAssignment
 from factors.features.rules.ports.rule_repository import RuleRepository
 

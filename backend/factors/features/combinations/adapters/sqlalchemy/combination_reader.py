@@ -4,13 +4,13 @@ from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.combinations.adapters.combination_filters import (
+from factors.features.combinations.adapters.sqlalchemy.combination_filters import (
     apply_combination_filter,
 )
-from factors.features.combinations.adapters.orm import CombinationRow
-from factors.features.combinations.adapters.sqlalchemy_combination_repository import (
+from factors.features.combinations.adapters.sqlalchemy.combination_repository import (
     row_to_combination,
 )
+from factors.features.combinations.adapters.sqlalchemy.orm import CombinationRow
 from factors.features.combinations.entities import Combination
 from factors.features.combinations.ports.combination_reader import (
     CombinationOverlap,

@@ -2,26 +2,26 @@ from typing import NoReturn
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from factors.features.combinations.adapters.sqlalchemy_combination_reader import (
+from factors.features.combinations.adapters.sqlalchemy.combination_reader import (
     SqlAlchemyCombinationReader,
 )
-from factors.features.combinations.adapters.sqlalchemy_combination_repository import (
+from factors.features.combinations.adapters.sqlalchemy.combination_repository import (
     SqlAlchemyCombinationRepository,
 )
-from factors.features.generation.adapters.sqlalchemy_generation_job_reader import (
+from factors.features.generation.adapters.sqlalchemy.generation_job_reader import (
     SqlAlchemyGenerationJobReader,
 )
-from factors.features.generation.adapters.sqlalchemy_generation_job_repository import (
+from factors.features.generation.adapters.sqlalchemy.generation_job_repository import (
     SqlAlchemyGenerationJobRepository,
 )
-from factors.features.rules.adapters.sqlalchemy_rule_reader import SqlAlchemyRuleReader
-from factors.features.rules.adapters.sqlalchemy_rule_repository import (
+from factors.features.rules.adapters.sqlalchemy.rule_reader import SqlAlchemyRuleReader
+from factors.features.rules.adapters.sqlalchemy.rule_repository import (
     SqlAlchemyRuleRepository,
 )
-from factors.features.tables.adapters.sqlalchemy_decision_table_reader import (
+from factors.features.tables.adapters.sqlalchemy.decision_table_reader import (
     SqlAlchemyDecisionTableReader,
 )
-from factors.features.tables.adapters.sqlalchemy_decision_table_repository import (
+from factors.features.tables.adapters.sqlalchemy.decision_table_repository import (
     SqlAlchemyDecisionTableRepository,
 )
 from factors.shared.ports.database import DataAccess

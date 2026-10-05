@@ -1,7 +1,7 @@
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from factors.features.generation.adapters.orm import GenerationJobRow
+from factors.features.generation.adapters.sqlalchemy.orm import GenerationJobRow
 from factors.features.generation.entities import (
     ACTIVE_STATUSES,
     GenerationJob,
