@@ -1,8 +1,8 @@
-"""SQLAlchemy async implementation of the `Database` port — the sole place
-that wires every module's concrete read-side query adapters together
-(absorbing what a separate composition-root file used to do; see
-`app/shared/ports/database.py`'s docstring for why that's an acknowledged
-exception to ADR 003's shared/-stays-generic rule rather than a leak).
+"""SQLAlchemy async implementation of the `Database` port. Per ADR 008,
+`Database` no longer holds any long-lived reader instances — each
+`transaction()`/`snapshot()` call opens its own session and builds a fresh
+`SqlAlchemyDataAccess` bound to it, so there is nothing left to wire up at
+construction time beyond the engine's session factory.
 """
 
 from collections.abc import AsyncIterator
@@ -16,19 +16,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.combinations.adapters.sqlalchemy_combination_queries import (
-    SqlAlchemyCombinationQueries,
-)
-from app.generation.adapters.sqlalchemy_generation_job_queries import (
-    SqlAlchemyGenerationJobQueries,
-)
-from app.rules.adapters.sqlalchemy_rule_queries import SqlAlchemyRuleQueries
-from app.shared.adapters.sqlalchemy_unit_of_work import SqlAlchemyUnitOfWork
-from app.shared.ports.database import Database
-from app.shared.ports.unit_of_work import UnitOfWork
-from app.tables.adapters.sqlalchemy_decision_table_queries import (
-    SqlAlchemyDecisionTableQueries,
-)
+from app.shared.adapters.sqlalchemy_data_access import SqlAlchemyDataAccess
+from app.shared.ports.database import DataAccess, Database
 
 
 def create_engine(database_url: str) -> AsyncEngine:
@@ -56,17 +45,21 @@ class SqlAlchemyDatabase(Database):
         self._session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=engine, expire_on_commit=False
         )
-        # Long-lived — each Queries adapter opens/closes its own session
-        # per call (see their `__init__`s), so there's no per-request
-        # "read scope" to manage here.
-        self.tables_queries = SqlAlchemyDecisionTableQueries(self._session_factory)
-        self.combinations_queries = SqlAlchemyCombinationQueries(self._session_factory)
-        self.rules_queries = SqlAlchemyRuleQueries(self._session_factory)
-        self.jobs_queries = SqlAlchemyGenerationJobQueries(self._session_factory)
 
     @asynccontextmanager
-    async def unit_of_work(self) -> AsyncIterator[UnitOfWork]:
-        """Open one database transaction and yield a `UnitOfWork` bound to
+    async def transaction(self) -> AsyncIterator[DataAccess]:
+        """Open one database transaction and yield a `DataAccess` bound to
         it; commits on clean exit, rolls back on exception."""
         async with self._session_factory() as session, session.begin():
-            yield SqlAlchemyUnitOfWork(session)
+            yield SqlAlchemyDataAccess(session)
+
+    @asynccontextmanager
+    async def snapshot(self) -> AsyncIterator[DataAccess]:
+        """Open one consistent read-only view and yield a `DataAccess`
+        bound to it; always rolls back, even if a query mistakenly writes
+        through it."""
+        async with self._session_factory() as session:
+            try:
+                yield SqlAlchemyDataAccess(session)
+            finally:
+                await session.rollback()

@@ -48,3 +48,4 @@ The strong, structurally-enforced guarantee "one call = one transaction, no more
 
 - Refines: [004. Database Interactions](./004-database-interactions.md)
 - Constrained by: [003. Project Structure](./003-project-structure.md) (with the exception noted above)
+- Refined by: [008. Merge Repositories and Readers Into One Data-Access Scope](./008-merge-repositories-and-readers-into-one-data-access-scope.md)

@@ -4,19 +4,17 @@ import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.combinations.ports.combination_queries import (
+from app.combinations.ports.combination_reader import (
     CombinationOverlapDTO,
     RuleFilterInput,
 )
 from app.combinations.ports.combination_repository import FactorValueAssignment
 from app.rules.entities import Rule, RuleAssignment
-from app.rules.ports.rule_queries import RuleDTO
+from app.rules.ports.rule_reader import RuleDTO
 from app.rules.service import RuleApplyRef, apply_rule
 from app.shared.errors import InvariantViolationError, NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
-from app.shared.ports.unit_of_work import UnitOfWork
-from app.shared.uow import uow
 
 
 @dataclass(frozen=True)
@@ -40,15 +38,12 @@ class RulesUseCases:
 
     # --- Writes ---------------------------------------------------------------
 
-    @uow
     async def create_rule(
         self,
         table_id: int,
         factor_values: tuple[tuple[int, int], ...] = (),
         output: str = "",
         title: str | None = None,
-        *,
-        uow: UnitOfWork,
     ) -> RuleRef:
         """Create a new rule for a decision table and immediately apply it
         to the table's current combinations (spec 005).
@@ -59,48 +54,49 @@ class RulesUseCases:
                 same factor twice, or names a factor or value not on this
                 table.
         """
-        table = await uow.tables.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
-        if not output.strip():
-            raise ValidationError("output must not be empty")
+        async with self._database.transaction() as db:
+            table = await db.tables.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
+            if not output.strip():
+                raise ValidationError("output must not be empty")
 
-        seen: set[int] = set()
-        for factor_id, _ in factor_values:
-            if factor_id in seen:
-                raise ValidationError(
-                    f"Factor {factor_id} is assigned more than once in the same request"
-                )
-            seen.add(factor_id)
-        table.validate_factor_value_pairs(list(factor_values))
+            seen: set[int] = set()
+            for factor_id, _ in factor_values:
+                if factor_id in seen:
+                    raise ValidationError(
+                        f"Factor {factor_id} is assigned more than once in "
+                        "the same request"
+                    )
+                seen.add(factor_id)
+            table.validate_factor_value_pairs(list(factor_values))
 
-        new_factor_values = [
-            RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
-            for factor_id, factor_value_id in factor_values
-        ]
-        existing_rules = await uow.rules.list_for_table(table_id)
+            new_factor_values = [
+                RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
+                for factor_id, factor_value_id in factor_values
+            ]
+            existing_rules = await db.rules.list_for_table(table_id)
 
-        clean_title = title.strip() if title and title.strip() else None
-        rule = Rule(
-            id=None,
-            decision_table_id=table_id,
-            output=output,
-            title=clean_title,
-            order_index=len(
-                existing_rules
-            ),  # append at the end (spec 008); drag to reorder afterward
-            factor_values=new_factor_values,
-        )
-        rule = await uow.rules.add(rule)
+            clean_title = title.strip() if title and title.strip() else None
+            rule = Rule(
+                id=None,
+                decision_table_id=table_id,
+                output=output,
+                title=clean_title,
+                order_index=len(
+                    existing_rules
+                ),  # append at the end (spec 008); drag to reorder afterward
+                factor_values=new_factor_values,
+            )
+            rule = await db.rules.add(rule)
 
-        applied = await apply_rule(uow.combinations, uow.rules, rule)
-        return RuleRef(
-            id=applied.rule_id,
-            matched_count=applied.matched_count,
-            applied_at=applied.applied_at,
-        )
+            applied = await apply_rule(db.combinations, db.rules, rule)
+            return RuleRef(
+                id=applied.rule_id,
+                matched_count=applied.matched_count,
+                applied_at=applied.applied_at,
+            )
 
-    @uow
     async def update_rule(
         self,
         table_id: int,
@@ -110,8 +106,6 @@ class RulesUseCases:
         title_set: bool = False,
         factor_values: tuple[tuple[int, int], ...] | None = None,
         factor_values_set: bool = False,
-        *,
-        uow: UnitOfWork,
     ) -> RuleRef:
         """Edits an existing rule's output/title/assignment in place, without
         changing its position (`order_index`) — see spec 008/009. Reordering is
@@ -128,71 +122,70 @@ class RulesUseCases:
                 names the same factor twice, or names a factor or value not
                 on this table.
         """
-        table = await uow.tables.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
-        rule = await uow.rules.get(table_id, rule_id)
-        if rule is None:
-            raise NotFoundError(f"Rule {rule_id} not found")
+        async with self._database.transaction() as db:
+            table = await db.tables.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
+            rule = await db.rules.get(table_id, rule_id)
+            if rule is None:
+                raise NotFoundError(f"Rule {rule_id} not found")
 
-        if output is not None:
-            if not output.strip():
-                raise ValidationError("output must not be empty")
-            rule.output = output
-        if title_set:
-            rule.title = title.strip() if title and title.strip() else None
+            if output is not None:
+                if not output.strip():
+                    raise ValidationError("output must not be empty")
+                rule.output = output
+            if title_set:
+                rule.title = title.strip() if title and title.strip() else None
 
-        if factor_values_set:
-            assert factor_values is not None
-            seen: set[int] = set()
-            for factor_id, _ in factor_values:
-                if factor_id in seen:
-                    raise ValidationError(
-                        f"Factor {factor_id} is assigned more than once in the same request"
-                    )
-                seen.add(factor_id)
-            table.validate_factor_value_pairs(list(factor_values))
-            rule.factor_values = [
-                RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
-                for factor_id, factor_value_id in factor_values
-            ]
+            if factor_values_set:
+                assert factor_values is not None
+                seen: set[int] = set()
+                for factor_id, _ in factor_values:
+                    if factor_id in seen:
+                        raise ValidationError(
+                            f"Factor {factor_id} is assigned more than once "
+                            "in the same request"
+                        )
+                    seen.add(factor_id)
+                table.validate_factor_value_pairs(list(factor_values))
+                rule.factor_values = [
+                    RuleAssignment(factor_id=factor_id, factor_value_id=factor_value_id)
+                    for factor_id, factor_value_id in factor_values
+                ]
 
-        await uow.rules.save(rule)
+            await db.rules.save(rule)
 
-        if factor_values_set or output is not None:
-            applied = await apply_rule(uow.combinations, uow.rules, rule)
+            if factor_values_set or output is not None:
+                applied = await apply_rule(db.combinations, db.rules, rule)
+                return RuleRef(
+                    id=applied.rule_id,
+                    matched_count=applied.matched_count,
+                    applied_at=applied.applied_at,
+                )
             return RuleRef(
-                id=applied.rule_id,
-                matched_count=applied.matched_count,
-                applied_at=applied.applied_at,
+                id=rule.id,
+                matched_count=rule.matched_count,
+                applied_at=rule.applied_at,
             )
-        return RuleRef(
-            id=rule.id, matched_count=rule.matched_count, applied_at=rule.applied_at
-        )
 
-    @uow
-    async def delete_rule(
-        self, table_id: int, rule_id: int, *, uow: UnitOfWork
-    ) -> None:
+    async def delete_rule(self, table_id: int, rule_id: int) -> None:
         """Delete a rule. Combinations it last patched keep their current
         status/output (see spec 005's "no revert on delete").
 
         Raises:
             NotFoundError: if `table_id` or `rule_id` doesn't exist.
         """
-        # Deleting a rule leaves whatever status/output it last set on
-        # combinations untouched — see spec 005's "no revert on delete".
-        deleted = await uow.rules.delete(table_id, rule_id)
-        if not deleted:
-            raise NotFoundError(f"Rule {rule_id} not found")
+        async with self._database.transaction() as db:
+            # Deleting a rule leaves whatever status/output it last set on
+            # combinations untouched — see spec 005's "no revert on delete".
+            deleted = await db.rules.delete(table_id, rule_id)
+            if not deleted:
+                raise NotFoundError(f"Rule {rule_id} not found")
 
-    @uow
     async def reorder_rules(
         self,
         table_id: int,
         ordered_rule_ids: tuple[int, ...] = (),
-        *,
-        uow: UnitOfWork,
     ) -> ReapplyRulesResult:
         """Persists a complete new rule order for a table and immediately
         replays every rule in that order (spec 008) — a reorder is a
@@ -207,35 +200,33 @@ class RulesUseCases:
             InvariantViolationError: if `ordered_rule_ids` isn't a
                 permutation of the table's existing rule ids.
         """
-        table = await uow.tables.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
+        async with self._database.transaction() as db:
+            table = await db.tables.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
 
-        existing = await uow.rules.list_for_table(table_id)
-        requested_ids = list(ordered_rule_ids)
-        if len(requested_ids) != len(set(requested_ids)) or set(requested_ids) != {
-            r.id for r in existing
-        }:
-            raise InvariantViolationError(
-                f"The given rule order must contain every rule of decision "
-                f"table {table_id} exactly once"
-            )
+            existing = await db.rules.list_for_table(table_id)
+            requested_ids = list(ordered_rule_ids)
+            if len(requested_ids) != len(set(requested_ids)) or set(requested_ids) != {
+                r.id for r in existing
+            }:
+                raise InvariantViolationError(
+                    f"The given rule order must contain every rule of decision "
+                    f"table {table_id} exactly once"
+                )
 
-        by_id = {r.id: r for r in existing}
-        for position, rid in enumerate(requested_ids):
-            by_id[rid].order_index = position
-            await uow.rules.save(by_id[rid])
+            by_id = {r.id: r for r in existing}
+            for position, rid in enumerate(requested_ids):
+                by_id[rid].order_index = position
+                await db.rules.save(by_id[rid])
 
-        results = [
-            await apply_rule(uow.combinations, uow.rules, by_id[rid])
-            for rid in requested_ids
-        ]
-        return ReapplyRulesResult(results=results)
+            results = [
+                await apply_rule(db.combinations, db.rules, by_id[rid])
+                for rid in requested_ids
+            ]
+            return ReapplyRulesResult(results=results)
 
-    @uow
-    async def reapply_rules(
-        self, table_id: int, *, uow: UnitOfWork
-    ) -> ReapplyRulesResult:
+    async def reapply_rules(self, table_id: int) -> ReapplyRulesResult:
         """Replays every rule for a table against its current combinations,
         in creation order, so a later rule's output wins on any row both it
         and an earlier rule match (see spec 005). Invoked automatically by
@@ -247,15 +238,16 @@ class RulesUseCases:
         Raises:
             NotFoundError: if `table_id` doesn't exist.
         """
-        table = await uow.tables.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
+        async with self._database.transaction() as db:
+            table = await db.tables.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
 
-        rules = await uow.rules.list_for_table(table_id)
-        results = [
-            await apply_rule(uow.combinations, uow.rules, rule) for rule in rules
-        ]
-        return ReapplyRulesResult(results=results)
+            rules = await db.rules.list_for_table(table_id)
+            results = [
+                await apply_rule(db.combinations, db.rules, rule) for rule in rules
+            ]
+            return ReapplyRulesResult(results=results)
 
     # --- Reads ------------------------------------------------------------------
 
@@ -268,49 +260,54 @@ class RulesUseCases:
         Raises:
             NotFoundError: if `table_id` doesn't exist.
         """
-        table = await self._database.tables_queries.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
+        async with self._database.snapshot() as db:
+            table = await db.tables_reader.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
 
-        result = await self._database.rules_queries.list_for_table(table_id, page)
-        if not result.items:
-            return result
+            result = await db.rules_reader.list_for_table(table_id, page)
+            if not result.items:
+                return result
 
-        # Shadowing (spec 009) depends on every rule's position/assignment,
-        # not just this page's — a rule on this page can be shadowed by one
-        # that lives on a different page.
-        all_rules = await self._database.rules_queries.list_all_for_table(
-            table_id
-        )  # order_index order
-        rule_inputs = [
-            RuleFilterInput(
-                rule_id=r.id,
-                output=r.output,
-                title=r.title,
-                factor_values=tuple(
-                    FactorValueAssignment(
-                        factor_id=fv.factor_id, factor_value_id=fv.factor_value_id
-                    )
-                    for fv in r.factor_values
-                ),
-            )
-            for r in all_rules
-        ]
-        shadowed_counts = (
-            await self._database.combinations_queries.count_shadowed_matches(
+            # Shadowing (spec 009) depends on every rule's position/
+            # assignment, not just this page's — a rule on this page can be
+            # shadowed by one that lives on a different page. Reading both
+            # from this one snapshot keeps them consistent with each other.
+            all_rules = await db.rules_reader.list_all_for_table(
+                table_id
+            )  # order_index order
+            rule_inputs = [
+                RuleFilterInput(
+                    rule_id=r.id,
+                    output=r.output,
+                    title=r.title,
+                    factor_values=tuple(
+                        FactorValueAssignment(
+                            factor_id=fv.factor_id, factor_value_id=fv.factor_value_id
+                        )
+                        for fv in r.factor_values
+                    ),
+                )
+                for r in all_rules
+            ]
+            shadowed_counts = await db.combinations_reader.count_shadowed_matches(
                 table_id, rule_inputs
             )
-        )
-        if not shadowed_counts:
-            return result
+            if not shadowed_counts:
+                return result
 
-        items = [
-            dataclasses.replace(rule, shadowed_count=shadowed_counts.get(rule.id, 0))
-            for rule in result.items
-        ]
-        return Page(
-            items=items, total=result.total, limit=result.limit, offset=result.offset
-        )
+            items = [
+                dataclasses.replace(
+                    rule, shadowed_count=shadowed_counts.get(rule.id, 0)
+                )
+                for rule in result.items
+            ]
+            return Page(
+                items=items,
+                total=result.total,
+                limit=result.limit,
+                offset=result.offset,
+            )
 
     async def list_rule_overlaps(
         self, table_id: int, page: PageRequest = PageRequest()
@@ -322,25 +319,27 @@ class RulesUseCases:
         Raises:
             NotFoundError: if `table_id` doesn't exist.
         """
-        table = await self._database.tables_queries.get(table_id)
-        if table is None:
-            raise NotFoundError(f"Decision table {table_id} not found")
+        async with self._database.snapshot() as db:
+            table = await db.tables_reader.get(table_id)
+            if table is None:
+                raise NotFoundError(f"Decision table {table_id} not found")
 
-        rules = await self._database.rules_queries.list_all_for_table(table_id)
-        rule_inputs = [
-            RuleFilterInput(
-                rule_id=rule.id,
-                output=rule.output,
-                title=rule.title,
-                factor_values=tuple(
-                    FactorValueAssignment(
-                        factor_id=fv.factor_id, factor_value_id=fv.factor_value_id
-                    )
-                    for fv in rule.factor_values
-                ),
+            rules = await db.rules_reader.list_all_for_table(table_id)
+            rule_inputs = [
+                RuleFilterInput(
+                    rule_id=rule.id,
+                    output=rule.output,
+                    title=rule.title,
+                    factor_values=tuple(
+                        FactorValueAssignment(
+                            factor_id=fv.factor_id,
+                            factor_value_id=fv.factor_value_id,
+                        )
+                        for fv in rule.factor_values
+                    ),
+                )
+                for rule in rules
+            ]
+            return await db.combinations_reader.list_matched_by_multiple_rules(
+                table_id, rule_inputs, page
             )
-            for rule in rules
-        ]
-        return await self._database.combinations_queries.list_matched_by_multiple_rules(
-            table_id, rule_inputs, page
-        )

@@ -35,7 +35,7 @@ class DecisionTableSummaryDTO:
     factor_count: int
 
 
-class DecisionTableQueries(ABC):
+class DecisionTableReader(ABC):
     """Read-side port for the `DecisionTable` aggregate."""
 
     @abstractmethod

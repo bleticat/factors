@@ -5,7 +5,7 @@ from app.combinations.use_cases import (
     BulkPatchInput,
     CombinationsUseCases,
 )
-from app.rules.ports.rule_queries import RuleValueDTO
+from app.rules.ports.rule_reader import RuleValueDTO
 from app.rules.use_cases import RulesUseCases
 from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import PageRequest
