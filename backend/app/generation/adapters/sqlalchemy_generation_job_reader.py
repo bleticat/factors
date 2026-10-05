@@ -11,8 +11,6 @@ class SqlAlchemyGenerationJobReader(GenerationJobReader):
         self._session = session
 
     async def list_stale_running(self) -> list[int]:
-        """Ids of all jobs currently in `running` status (used by the
-        startup sweep — none can legitimately survive a process restart)."""
         stmt = select(GenerationJobRow.id).where(
             GenerationJobRow.status == str(GenerationJobStatus.RUNNING)
         )

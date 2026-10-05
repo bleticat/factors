@@ -1,9 +1,3 @@
-"""The full plan-level verification flow, as a single workflow test:
-create table -> add factors/values -> generate -> review/bulk-refine ->
-evaluate (full and partial). Composes commands and queries from all four
-feature specs, so it belongs here rather than under commands/ or queries/.
-"""
-
 from app.combinations.use_cases import (
     BulkFilterInput,
     BulkPatchCombinationsRequest,

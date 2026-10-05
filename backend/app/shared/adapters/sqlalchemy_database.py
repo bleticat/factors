@@ -1,10 +1,3 @@
-"""SQLAlchemy async implementation of the `Database` port (ADR 004).
-`Database` holds no long-lived reader instances — each
-`transaction()`/`snapshot()` call opens its own session and builds a fresh
-`SqlAlchemyDataAccess` bound to it, so there is nothing left to wire up at
-construction time beyond the engine's session factory.
-"""
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -21,8 +14,6 @@ from app.shared.ports.database import DataAccess, Database
 
 
 def create_engine(database_url: str) -> AsyncEngine:
-    """Create the app's async SQLAlchemy engine, applying SQLite-specific
-    pragmas (WAL, foreign keys, busy timeout) when `database_url` is sqlite."""
     engine = create_async_engine(database_url, future=True)
 
     if database_url.startswith("sqlite"):
@@ -48,13 +39,6 @@ class SqlAlchemyDatabase(Database):
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[DataAccess]:
-        """Open one database transaction and yield a `DataAccess` bound to
-        it; commits on clean exit, rolls back on exception. The yielded
-        `DataAccess` is deactivated the instant the caller's `async with`
-        block exits — any later use of a `db` reference kept past that
-        point raises `RuntimeError` rather than running against a session
-        that's already been committed and closed (see
-        `SqlAlchemyDataAccess._deactivate`)."""
         async with self._session_factory() as session, session.begin():
             data_access = SqlAlchemyDataAccess(session)
             try:
@@ -64,9 +48,6 @@ class SqlAlchemyDatabase(Database):
 
     @asynccontextmanager
     async def snapshot(self) -> AsyncIterator[DataAccess]:
-        """Open one consistent read-only view and yield a `DataAccess`
-        bound to it; always rolls back, even if a query mistakenly writes
-        through it. Deactivated on exit, same as `transaction()` above."""
         async with self._session_factory() as session:
             data_access = SqlAlchemyDataAccess(session)
             try:

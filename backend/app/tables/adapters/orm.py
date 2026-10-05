@@ -1,7 +1,3 @@
-"""SQLAlchemy table mappings owned by the `tables` module. See
-`specs/features/decision_tables/*.md` and the plan's "Storage schema"
-section for the rationale behind each column/index/constraint."""
-
 from datetime import datetime
 
 from sqlalchemy import (

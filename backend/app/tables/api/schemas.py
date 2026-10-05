@@ -1,7 +1,3 @@
-"""Request bodies for the `tables` module's REST endpoints. Routers using
-these only parse input, call the module's command/query service, and
-serialize the result — no business logic lives here."""
-
 from pydantic import BaseModel
 
 

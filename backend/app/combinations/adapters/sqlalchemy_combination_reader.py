@@ -30,7 +30,6 @@ class SqlAlchemyCombinationReader(CombinationReader):
     async def list_(
         self, table_id: int, filter_: CombinationFilter, page: PageRequest
     ) -> Page[Combination]:
-        """Return a page of a decision table's combinations matching `filter_`."""
         count_stmt = apply_combination_filter(
             select(func.count(CombinationRow.id.distinct())), table_id, filter_
         )
@@ -54,8 +53,6 @@ class SqlAlchemyCombinationReader(CombinationReader):
     async def find_by_exact_assignment(
         self, table_id: int, assignment: list[tuple[int, int]]
     ) -> Combination | None:
-        """Full-assignment evaluate: the assignment covers every factor of
-        the table, so at most one combination can match."""
         filter_ = CombinationFilter(
             factor_values=tuple(
                 FactorValueAssignment(
@@ -73,9 +70,6 @@ class SqlAlchemyCombinationReader(CombinationReader):
     async def list_matched_by_multiple_rules(
         self, table_id: int, rules: list[RuleFilterInput], page: PageRequest
     ) -> Page[CombinationOverlap]:
-        """Rows matched by 2+ of the given rules' assignments (spec 006).
-        Callers pass every rule for the table; a caller passing fewer than
-        two rules gets an empty page back."""
         if len(rules) < 2:
             return Page(items=[], total=0, limit=page.limit, offset=page.offset)
 
@@ -169,14 +163,6 @@ class SqlAlchemyCombinationReader(CombinationReader):
     async def count_shadowed_matches(
         self, table_id: int, ordered_rules: list[RuleFilterInput]
     ) -> dict[int, int]:
-        """Spec 009: rules are no longer prevented from being more general
-        than one another, so a rule can end up **shadowed** — some or all of
-        the rows it matches are also matched by a rule later in `ordered_rules`
-        (list order = apply order), whose output wins instead after a
-        reapply. Returns `{rule_id: shadowed_count}` — how many of that
-        rule's own matched rows currently show a *different* rule's output,
-        for every rule that has at least one such row (a rule with none is
-        simply absent from the result, not present with 0)."""
         if len(ordered_rules) < 2:
             return {}
 

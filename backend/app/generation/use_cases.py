@@ -1,8 +1,3 @@
-"""Use cases for the `generation` module. Every public method takes one
-`...Request` and returns one `...Response` wrapping the real
-`GenerationJob` entity straight from the repository/reader — there's no
-separate "DTO"/"Ref" mirror of a `GenerationJob`'s fields."""
-
 from dataclasses import dataclass
 
 from app.combinations.entities import (
@@ -93,9 +88,6 @@ class ListStaleRunningGenerationJobsResponse:
 
 
 class GenerationUseCases:
-    """The `generation` module's use cases. Constructed once with the
-    app's `Database`."""
-
     def __init__(self, database: Database) -> None:
         self._database = database
 
@@ -104,16 +96,6 @@ class GenerationUseCases:
     async def request_generation(
         self, request: RequestGenerationRequest
     ) -> RequestGenerationResponse:
-        """Start generating combinations for a decision table: deletes any
-        existing combinations (delete-and-recreate semantics, spec 002) and
-        creates a pending job for the background worker to drive.
-
-        Raises:
-            NotFoundError: if `table_id` doesn't exist.
-            InvariantViolationError: if the table has no factors, any factor
-                has no values, a job is already active for this table, or
-                the projected combination count exceeds `max_combinations`.
-        """
         async with self._database.transaction() as db:
             table = await db.tables.get(request.table_id)
             if table is None:
@@ -156,12 +138,6 @@ class GenerationUseCases:
     async def cancel_generation_job(
         self, request: CancelGenerationJobRequest
     ) -> CancelGenerationJobResponse:
-        """Cancel an active generation job.
-
-        Raises:
-            NotFoundError: if `job_id` doesn't exist.
-            InvariantViolationError: if the job is already terminal.
-        """
         async with self._database.transaction() as db:
             job = await db.jobs.get(request.job_id)
             if job is None:
@@ -173,11 +149,6 @@ class GenerationUseCases:
     async def mark_generation_job_failed(
         self, request: MarkGenerationJobFailedRequest
     ) -> MarkGenerationJobFailedResponse:
-        """Mark a generation job failed with `request.error_message`.
-
-        Raises:
-            NotFoundError: if `job_id` doesn't exist.
-        """
         async with self._database.transaction() as db:
             job = await db.jobs.get(request.job_id)
             if job is None:
@@ -192,8 +163,6 @@ class GenerationUseCases:
             MarkStaleGenerationJobsFailedRequest()
         ),
     ) -> MarkStaleGenerationJobsFailedResponse:
-        """Bulk-fail the given jobs (used to sweep jobs left `running` by a
-        crashed process at startup)."""
         async with self._database.transaction() as db:
             updated = await db.jobs.mark_failed_bulk(
                 request.job_ids or [], request.error_message
@@ -203,16 +172,6 @@ class GenerationUseCases:
     async def generate_combinations_batch(
         self, request: GenerateCombinationsBatchRequest
     ) -> GenerateCombinationsBatchResponse:
-        """The batching use case at the heart of the generation design (see
-        the plan's "The async-job design" section and spec 002).
-        One call = one unit of work = one transaction = one commit. The
-        background loop (`generation/worker.py`) calls this repeatedly; it
-        is itself a boundary, not a use-case method, so it may loop over it
-        freely.
-
-        Raises:
-            NotFoundError: if `job_id` or its decision table doesn't exist.
-        """
         async with self._database.transaction() as db:
             # Read live status/cursor fresh, inside this call's own
             # transaction — the job row is the sole source of truth, so
@@ -282,11 +241,6 @@ class GenerationUseCases:
     async def get_generation_job(
         self, request: GetGenerationJobRequest
     ) -> GetGenerationJobResponse:
-        """Return a generation job's current status and progress.
-
-        Raises:
-            NotFoundError: if `job_id` doesn't exist.
-        """
         async with self._database.snapshot() as db:
             job = await db.jobs.get(request.job_id)
             if job is None:
@@ -296,8 +250,6 @@ class GenerationUseCases:
     async def list_stale_running_generation_jobs(
         self,
     ) -> ListStaleRunningGenerationJobsResponse:
-        """Return the ids of jobs left `running` by a previous process that
-        crashed or was killed (used by the startup sweep)."""
         async with self._database.snapshot() as db:
             job_ids = await db.jobs_reader.list_stale_running()
             return ListStaleRunningGenerationJobsResponse(job_ids=job_ids)

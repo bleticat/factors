@@ -26,37 +26,19 @@ class CombinationPatch:
 
 
 class CombinationRepository(ABC):
-    """Write-side port for `Combination`/`CombinationValue`. Deliberately
-    NOT a whole-aggregate load/mutate/save port at this row count — see the
-    plan's "Domain model / aggregates" section. `bulk_insert` and
-    `bulk_update_status` are set-based SQL operations; `get`/`save` support
-    the single-row edit path."""
+    @abstractmethod
+    async def bulk_insert(self, combinations: list[Combination]) -> None: ...
 
     @abstractmethod
-    async def bulk_insert(self, combinations: list[Combination]) -> None:
-        """Insert a batch of newly-generated combinations in one set-based
-        operation."""
+    async def get(self, table_id: int, combination_id: int) -> Combination | None: ...
 
     @abstractmethod
-    async def get(self, table_id: int, combination_id: int) -> Combination | None:
-        """Return one combination, or None if it doesn't exist on this table."""
-
-    @abstractmethod
-    async def save(self, combination: Combination) -> None:
-        """Persist status/output/impossible_reason for one already-existing
-        combination."""
+    async def save(self, combination: Combination) -> None: ...
 
     @abstractmethod
     async def bulk_update_status(
         self, table_id: int, filter_: CombinationFilter, patch: CombinationPatch
-    ) -> tuple[int, int]:
-        """Apply `patch` to every combination in `table_id` matching
-        `filter_` in one set-based UPDATE. Returns (matched_count,
-        updated_count) — the two are equal in v1 since there's no
-        concurrent-modification detection, but kept distinct in the
-        signature for that future case."""
+    ) -> tuple[int, int]: ...
 
     @abstractmethod
-    async def delete_all_for_table(self, table_id: int) -> None:
-        """Used both by regeneration (delete-and-recreate) and by factor/
-        value deletion (invalidates existing combinations' signatures)."""
+    async def delete_all_for_table(self, table_id: int) -> None: ...

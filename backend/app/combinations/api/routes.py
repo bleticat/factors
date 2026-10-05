@@ -1,6 +1,3 @@
-"""Thin HTTP boundary: parse input, call the module's use cases, serialize
-the result."""
-
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.combinations.api import schemas
@@ -19,7 +16,6 @@ router = APIRouter()
 
 
 def get_combinations_use_cases(request: Request) -> CombinationsUseCases:
-    """FastAPI dependency: build a `CombinationsUseCases` for the current request."""
     return CombinationsUseCases(request.app.state.database)
 
 
@@ -32,8 +28,6 @@ async def list_combinations(
     offset: int = 0,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
-    """`fv` is a repeatable `factor_id:factor_value_id` pair, e.g.
-    `?fv=3:9&fv=5:14` — the same AND-ed filter shape bulk-patch uses."""
     response = await use_cases.list_combinations(
         ListCombinationsRequest(
             table_id=table_id,
@@ -57,7 +51,6 @@ async def patch_combination(
     body: schemas.PatchCombinationRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
-    """Update a single combination's status, output, and/or impossible reason."""
     fields = body.model_fields_set
     response = await use_cases.patch_combination(
         PatchCombinationRequest(
@@ -79,7 +72,6 @@ async def bulk_patch_combinations(
     body: schemas.BulkPatchCombinationsRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
-    """Apply a patch to every combination matching a filter."""
     patch_fields = body.patch.model_fields_set
     response = await use_cases.bulk_patch_combinations(
         BulkPatchCombinationsRequest(
@@ -106,8 +98,6 @@ async def evaluate(
     body: schemas.EvaluateRequest,
     use_cases: CombinationsUseCases = Depends(get_combinations_use_cases),
 ):
-    """Evaluate a (possibly partial) factor-value assignment against a
-    decision table's combinations."""
     response = await use_cases.evaluate_combinations(
         EvaluateCombinationsRequest(
             table_id=table_id,

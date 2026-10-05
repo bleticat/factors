@@ -1,8 +1,3 @@
-"""Shared test-setup helpers. Per ADR 005, these only handle arrangement
-(creating tables/factors/values, driving generation to completion) — they
-must never hide the use-case call a test is actually verifying.
-"""
-
 from app.generation.entities import TERMINAL_STATUSES, GenerationJob
 from app.generation.use_cases import (
     GenerateCombinationsBatchRequest,
@@ -48,7 +43,6 @@ async def add_factor_with_values(
 
 
 async def build_standard_table(database: Database) -> dict[str, int | list[int]]:
-    """3 x 3 x 2 = 18-combination table: Browser x OS x Login state."""
     table_id = await create_table(database, "Login flow")
     browser_id, browser_values = await add_factor_with_values(
         database, table_id, "Browser", ["Chrome", "Firefox", "Safari"]

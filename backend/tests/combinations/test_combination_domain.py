@@ -1,14 +1,24 @@
-"""Pure domain-logic tests — no database involved. Covers spec
-002's regression case: mixed-radix cursor decomposition must match
-`itertools.product` order exactly."""
-
 import itertools
 
+import pytest
+
 from app.combinations.entities import (
+    CombinationStatus,
     build_signature,
     decompose_index,
+    parse_status,
     total_combinations,
 )
+from app.shared.errors import ValidationError
+
+
+def test_parse_status_parses_a_valid_status():
+    assert parse_status("possible") == CombinationStatus.POSSIBLE
+
+
+def test_parse_status_rejects_an_unknown_status():
+    with pytest.raises(ValidationError):
+        parse_status("bogus")
 
 
 def test_total_combinations_multiplies_value_counts():

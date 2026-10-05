@@ -1,11 +1,3 @@
-"""Per ADR 005: each test gets its own fresh database, migrated the same
-way production is (Alembic `upgrade head`, not `create_all`), destroyed
-after. The `database` fixture is a real `SqlAlchemyDatabase`, the same
-concrete type `app/main.py` builds — tests construct the same module
-`XUseCases(database)` classes that production boundaries use, so tests
-can't drift from production wiring.
-"""
-
 import asyncio
 import os
 import tempfile

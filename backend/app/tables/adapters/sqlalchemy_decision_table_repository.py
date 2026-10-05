@@ -32,7 +32,6 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
         self._session = session
 
     async def add(self, table: DecisionTable) -> DecisionTable:
-        """Insert a new table and populate its generated `id` in place."""
         row = DecisionTableRow(name=table.name, description=table.description)
         self._session.add(row)
         await self._session.flush()
@@ -40,23 +39,10 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
         return table
 
     async def get(self, table_id: int) -> DecisionTable | None:
-        """Return the table with its factors and values, or None if
-        `table_id` doesn't exist."""
         row = await self._load_row(table_id)
         return None if row is None else _to_domain(row)
 
     async def save(self, table: DecisionTable) -> None:
-        """Reconcile the aggregate. Reads of `row.factors` / `factor_row.
-        values` below only ever touch collections that came from this
-        method's own eager (`selectinload`) query — never a relationship
-        collection on a row we just constructed and flushed ourselves.
-        Under the async driver, touching an *unloaded* relationship
-        attribute on a freshly-flushed object trips a synchronous lazy-load
-        (`MissingGreenlet`), because a persistent object's untouched
-        relationships are lazy by default even when we know them to be
-        empty — so new rows are added/removed via the session directly,
-        with explicit FK columns, rather than via collection mutation.
-        """
         assert table.id is not None
         row = await self._load_row(table.id)
         assert row is not None
@@ -113,8 +99,6 @@ class SqlAlchemyDecisionTableRepository(DecisionTableRepository):
         await self._session.flush()
 
     async def delete(self, table_id: int) -> None:
-        """Delete a table and its factors/values. A no-op if `table_id`
-        doesn't exist."""
         row = await self._session.get(DecisionTableRow, table_id)
         if row is not None:
             await self._session.delete(row)

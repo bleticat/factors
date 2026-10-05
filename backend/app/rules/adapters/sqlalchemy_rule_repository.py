@@ -31,7 +31,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         self._session = session
 
     async def add(self, rule: Rule) -> Rule:
-        """Insert a new rule and populate its generated `id` in place."""
         row = RuleRow(
             decision_table_id=rule.decision_table_id,
             output=rule.output,
@@ -65,10 +64,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         )
 
     async def save(self, rule: Rule) -> None:
-        """Persist `output`/`title`/`order_index`/`factor_values` for an
-        already-existing rule (spec 008) — a full replace of its assignment,
-        not a diff, since the whole `factor_values` list is always supplied
-        by the caller."""
         assert rule.id is not None
         row = await self._session.get(RuleRow, rule.id)
         assert row is not None
@@ -92,7 +87,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         await self._session.flush()
 
     async def get(self, table_id: int, rule_id: int) -> Rule | None:
-        """Return one rule, or None if it doesn't exist on this table."""
         stmt = (
             select(RuleRow)
             .where(RuleRow.id == rule_id, RuleRow.decision_table_id == table_id)
@@ -102,7 +96,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         return None if row is None else row_to_rule(row)
 
     async def list_for_table(self, table_id: int) -> list[Rule]:
-        """Return every rule for a table, ordered by `order_index`."""
         stmt = (
             select(RuleRow)
             .where(RuleRow.decision_table_id == table_id)
@@ -113,7 +106,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         return [row_to_rule(row) for row in rows]
 
     async def delete(self, table_id: int, rule_id: int) -> bool:
-        """Delete a rule. Returns whether a matching rule was found and deleted."""
         stmt = delete(RuleRow).where(
             RuleRow.id == rule_id, RuleRow.decision_table_id == table_id
         )
@@ -122,9 +114,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
         return bool(result.rowcount)
 
     async def delete_all_for_table(self, table_id: int) -> None:
-        """Used when a factor/factor value is deleted — see spec 005's
-        whole-set rule invalidation, mirroring `Combination.
-        delete_all_for_table`."""
         stmt = delete(RuleRow).where(RuleRow.decision_table_id == table_id)
         await self._session.execute(stmt)
         await self._session.flush()
@@ -132,7 +121,6 @@ class SqlAlchemyRuleRepository(RuleRepository):
     async def record_apply(
         self, rule_id: int, matched_count: int, applied_at: datetime
     ) -> None:
-        """Persist the outcome of (re)applying a rule."""
         row = await self._session.get(RuleRow, rule_id)
         assert row is not None
         row.matched_count = matched_count
