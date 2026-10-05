@@ -26,3 +26,11 @@ class Rule:
     factor_values: list[RuleAssignment] = field(default_factory=list)
     matched_count: int = 0
     applied_at: datetime | None = None
+    created_at: datetime | None = None
+    # How many of this rule's own matched rows are shadowed by a rule later
+    # in apply order (spec 009) — i.e. currently show a *different* rule's
+    # output. Computed and attached by `RulesUseCases.list_rules`, the one
+    # place that needs it; every other path leaves it at the default,
+    # exactly like `matched_count`/`applied_at` are only meaningful once
+    # `apply_rule` has attached them.
+    shadowed_count: int = 0

@@ -6,7 +6,12 @@ a use-case method (see `generation/worker.py`)."""
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from app.config import settings
-from app.generation.use_cases import GenerationUseCases
+from app.generation.use_cases import (
+    CancelGenerationJobRequest,
+    GenerationUseCases,
+    GetGenerationJobRequest,
+    RequestGenerationRequest,
+)
 from app.generation.worker import run_generation_job
 
 router = APIRouter()
@@ -26,16 +31,18 @@ async def request_generation(
 ):
     """Start generating combinations for a decision table and schedule the
     background batch loop that drives the job to completion."""
-    job = await use_cases.request_generation(
-        table_id, max_combinations=settings.max_combinations
+    response = await use_cases.request_generation(
+        RequestGenerationRequest(
+            table_id=table_id, max_combinations=settings.max_combinations
+        )
     )
     background_tasks.add_task(
         run_generation_job,
         database=request.app.state.database,
-        job_id=job.id,
+        job_id=response.job.id,
         batch_size=settings.generation_batch_size,
     )
-    return job
+    return response.job
 
 
 @router.get("/{table_id}/generation-jobs/{job_id}")
@@ -45,7 +52,8 @@ async def get_generation_job(
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
     """Get a generation job's current status and progress."""
-    return await use_cases.get_generation_job(job_id)
+    response = await use_cases.get_generation_job(GetGenerationJobRequest(job_id))
+    return response.job
 
 
 @router.post("/{table_id}/generation-jobs/{job_id}/cancel")
@@ -55,4 +63,5 @@ async def cancel_generation_job(
     use_cases: GenerationUseCases = Depends(get_generation_use_cases),
 ):
     """Cancel an active generation job."""
-    return await use_cases.cancel_generation_job(job_id)
+    response = await use_cases.cancel_generation_job(CancelGenerationJobRequest(job_id))
+    return response.job

@@ -1,7 +1,6 @@
-"""Internal helper logic `rules.commands` delegates to. Not part of the
+"""Internal helper logic `rules.use_cases` delegates to. Not part of the
 module's public request/response surface."""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from app.combinations.entities import CombinationStatus
@@ -15,22 +14,18 @@ from app.rules.entities import Rule
 from app.rules.ports.rule_repository import RuleRepository
 
 
-@dataclass(frozen=True)
-class RuleApplyRef:
-    rule_id: int
-    matched_count: int
-    applied_at: datetime
-
-
 async def apply_rule(
     combinations: CombinationRepository, rules: RuleRepository, rule: Rule
-) -> RuleApplyRef:
+) -> Rule:
     """Shared "apply a rule to the table's current combinations" logic, used
-    by both `CreateRuleCommand` (apply once, immediately) and
-    `ReapplyRulesCommand` (replay every rule after regeneration or on
-    demand) — see spec 005. A rule's apply is exactly a
-    `BulkPatchCombinationsCommand` with the rule's assignment as the filter
-    and `status=possible`/`output=<rule.output>` as the patch."""
+    by both `create_rule` (apply once, immediately) and `reapply_rules`
+    (replay every rule after regeneration or on demand) — see spec 005. A
+    rule's apply is exactly a `bulk_patch_combinations`-style filter/patch
+    pair, with the rule's own assignment as the filter and
+    `status=possible`/`output=<rule.output>` as the patch. Returns the
+    rule with its `matched_count`/`applied_at` updated to the outcome —
+    there's no separate result type, since those two fields are exactly
+    what changed."""
     assert rule.id is not None
     filter_ = CombinationFilter(
         factor_values=tuple(
@@ -49,4 +44,6 @@ async def apply_rule(
 
     applied_at = datetime.now(UTC).replace(tzinfo=None)
     await rules.record_apply(rule.id, matched, applied_at)
-    return RuleApplyRef(rule_id=rule.id, matched_count=matched, applied_at=applied_at)
+    rule.matched_count = matched
+    rule.applied_at = applied_at
+    return rule

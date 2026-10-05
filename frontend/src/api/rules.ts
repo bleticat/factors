@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { CombinationOverlap, Page, ReapplyRulesResult, Rule, RuleRef } from '../types/api'
+import type { CombinationOverlap, Page, ReapplyRulesResult, Rule } from '../types/api'
 
 export function listRules(tableId: number, limit = 50, offset = 0) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
@@ -17,7 +17,7 @@ export function createRule(
   output: string,
   title?: string,
 ) {
-  return api.post<RuleRef>(`/decision-tables/${tableId}/rules`, {
+  return api.post<Rule>(`/decision-tables/${tableId}/rules`, {
     factor_values: factorValues,
     output,
     title: title || null,
@@ -29,7 +29,7 @@ export function updateRule(
   ruleId: number,
   input: { output?: string; title?: string | null; factorValues?: [number, number][] },
 ) {
-  return api.patch<RuleRef>(`/decision-tables/${tableId}/rules/${ruleId}`, {
+  return api.patch<Rule>(`/decision-tables/${tableId}/rules/${ruleId}`, {
     output: input.output,
     title: input.title,
     factor_values: input.factorValues,

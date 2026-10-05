@@ -54,3 +54,4 @@ The term `command` now refers to a request type; use `command handler` when refe
 
 - Used by: [003. Project Structure](./003-project-structure.md)
 - Used by: [004. Database Interactions](./004-database-interactions.md)
+- Refined by: [009. Use Cases Take Requests and Return Responses Wrapping Entities](./009-use-cases-take-requests-and-return-responses-wrapping-entities.md)

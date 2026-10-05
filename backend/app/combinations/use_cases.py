@@ -1,9 +1,11 @@
-"""Use cases for the `combinations` module."""
+"""Use cases for the `combinations` module. Every public method takes one
+`...Request` and returns one `...Response` wrapping the real `Combination`
+entity/entities straight from the repository/reader — there's no separate
+"DTO"/"Ref" mirror of a `Combination`'s fields."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from app.combinations.entities import parse_status
-from app.combinations.ports.combination_reader import CombinationDTO
+from app.combinations.entities import Combination, parse_status
 from app.combinations.ports.combination_repository import (
     CombinationFilter,
     CombinationPatch,
@@ -13,19 +15,23 @@ from app.shared.errors import NotFoundError, ValidationError
 from app.shared.pagination import Page, PageRequest
 from app.shared.ports.database import Database
 
-
-@dataclass(frozen=True)
-class CombinationRef:
-    id: int
-    status: str
-    output: str | None
-    impossible_reason: str | None
+# --- Requests/responses -------------------------------------------------
 
 
 @dataclass(frozen=True)
-class BulkPatchResult:
-    matched_count: int
-    updated_count: int
+class PatchCombinationRequest:
+    table_id: int
+    combination_id: int
+    status: str | None = None
+    output: str | None = None
+    output_set: bool = False
+    impossible_reason: str | None = None
+    impossible_reason_set: bool = False
+
+
+@dataclass(frozen=True)
+class PatchCombinationResponse:
+    combination: Combination
 
 
 @dataclass(frozen=True)
@@ -44,14 +50,47 @@ class BulkPatchInput:
 
 
 @dataclass(frozen=True)
-class EvaluateResult:
+class BulkPatchCombinationsRequest:
+    table_id: int
+    filter: BulkFilterInput = field(default_factory=BulkFilterInput)
+    patch: BulkPatchInput = field(default_factory=BulkPatchInput)
+
+
+@dataclass(frozen=True)
+class BulkPatchCombinationsResponse:
+    matched_count: int
+    updated_count: int
+
+
+@dataclass(frozen=True)
+class ListCombinationsRequest:
+    table_id: int
+    status: str | None = None
+    factor_values: tuple[tuple[int, int], ...] = ()
+    page: PageRequest = field(default_factory=PageRequest)
+
+
+@dataclass(frozen=True)
+class ListCombinationsResponse:
+    page: Page[Combination]
+
+
+@dataclass(frozen=True)
+class EvaluateCombinationsRequest:
+    table_id: int
+    assignment: tuple[tuple[int, int], ...] = ()
+    page: PageRequest = field(default_factory=PageRequest)
+
+
+@dataclass(frozen=True)
+class EvaluateCombinationsResponse:
     """`kind == "single"` for a full assignment (`combination` may still be
     `None` if nothing matches); `kind == "list"` for a partial/empty
     assignment (`page` holds every consistent combination)."""
 
     kind: str
-    combination: CombinationDTO | None = None
-    page: Page[CombinationDTO] | None = None
+    combination: Combination | None = None
+    page: Page[Combination] | None = None
 
 
 class CombinationsUseCases:
@@ -64,15 +103,8 @@ class CombinationsUseCases:
     # --- Writes ---------------------------------------------------------------
 
     async def patch_combination(
-        self,
-        table_id: int,
-        combination_id: int,
-        status: str | None = None,
-        output: str | None = None,
-        output_set: bool = False,
-        impossible_reason: str | None = None,
-        impossible_reason_set: bool = False,
-    ) -> CombinationRef:
+        self, request: PatchCombinationRequest
+    ) -> PatchCombinationResponse:
         """Update a single combination's status, output, and/or impossible reason.
 
         `output`/`impossible_reason` are only applied when their `_set` flag
@@ -83,33 +115,27 @@ class CombinationsUseCases:
             ValidationError: if `status` isn't a valid status.
         """
         async with self._database.transaction() as db:
-            combination = await db.combinations.get(table_id, combination_id)
+            combination = await db.combinations.get(
+                request.table_id, request.combination_id
+            )
             if combination is None:
-                raise NotFoundError(f"Combination {combination_id} not found")
+                raise NotFoundError(f"Combination {request.combination_id} not found")
 
-            if status is not None:
-                combination.status = parse_status(status)
-            if output_set:
-                combination.output = output
-            if impossible_reason_set:
-                combination.impossible_reason = impossible_reason
+            if request.status is not None:
+                combination.status = parse_status(request.status)
+            if request.output_set:
+                combination.output = request.output
+            if request.impossible_reason_set:
+                combination.impossible_reason = request.impossible_reason
 
             await db.combinations.save(combination)
-            assert combination.id is not None
-            return CombinationRef(
-                id=combination.id,
-                status=str(combination.status),
-                output=combination.output,
-                impossible_reason=combination.impossible_reason,
-            )
+            return PatchCombinationResponse(combination=combination)
 
     async def bulk_patch_combinations(
-        self,
-        table_id: int,
-        filter: BulkFilterInput = BulkFilterInput(),
-        patch: BulkPatchInput = BulkPatchInput(),
-    ) -> BulkPatchResult:
-        """Apply `patch` to every combination in `table_id` matching `filter`.
+        self, request: BulkPatchCombinationsRequest
+    ) -> BulkPatchCombinationsResponse:
+        """Apply `request.patch` to every combination in `table_id` matching
+        `request.filter`.
 
         Raises:
             NotFoundError: if `table_id` doesn't exist.
@@ -118,44 +144,44 @@ class CombinationsUseCases:
                 valid status.
         """
         async with self._database.transaction() as db:
-            table = await db.tables.get(table_id)
+            table = await db.tables.get(request.table_id)
             if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            table.validate_factor_value_pairs(list(filter.factor_values))
+                raise NotFoundError(f"Decision table {request.table_id} not found")
+            table.validate_factor_value_pairs(list(request.filter.factor_values))
 
             filter_ = CombinationFilter(
-                status=parse_status(filter.status)
-                if filter.status is not None
+                status=parse_status(request.filter.status)
+                if request.filter.status is not None
                 else None,
                 factor_values=tuple(
                     FactorValueAssignment(
                         factor_id=factor_id, factor_value_id=factor_value_id
                     )
-                    for factor_id, factor_value_id in filter.factor_values
+                    for factor_id, factor_value_id in request.filter.factor_values
                 ),
             )
             patch_ = CombinationPatch(
-                status=parse_status(patch.status) if patch.status is not None else None,
-                output=patch.output,
-                output_set=patch.output_set,
-                impossible_reason=patch.impossible_reason,
-                impossible_reason_set=patch.impossible_reason_set,
+                status=parse_status(request.patch.status)
+                if request.patch.status is not None
+                else None,
+                output=request.patch.output,
+                output_set=request.patch.output_set,
+                impossible_reason=request.patch.impossible_reason,
+                impossible_reason_set=request.patch.impossible_reason_set,
             )
 
             matched, updated = await db.combinations.bulk_update_status(
-                table_id, filter_, patch_
+                request.table_id, filter_, patch_
             )
-            return BulkPatchResult(matched_count=matched, updated_count=updated)
+            return BulkPatchCombinationsResponse(
+                matched_count=matched, updated_count=updated
+            )
 
     # --- Reads ------------------------------------------------------------------
 
     async def list_combinations(
-        self,
-        table_id: int,
-        status: str | None = None,
-        factor_values: tuple[tuple[int, int], ...] = (),
-        page: PageRequest = PageRequest(),
-    ) -> Page[CombinationDTO]:
+        self, request: ListCombinationsRequest
+    ) -> ListCombinationsResponse:
         """List a decision table's combinations, optionally filtered by
         status and/or factor-value assignment.
 
@@ -169,32 +195,34 @@ class CombinationsUseCases:
             # though this is a read-only method: it's the one that returns
             # the full `DecisionTable` entity, whose own
             # `validate_factor_value_pairs` this validation reuses rather
-            # than duplicating against a separate read-side DTO shape.
+            # than duplicating against a separate read-side shape.
             # Reading through it does no harm — nothing in this method ever
             # calls `save`/`add`/`delete`, so there's nothing for the
             # snapshot's guaranteed rollback to undo.
-            table = await db.tables.get(table_id)
+            table = await db.tables.get(request.table_id)
             if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
-            table.validate_factor_value_pairs(list(factor_values))
+                raise NotFoundError(f"Decision table {request.table_id} not found")
+            table.validate_factor_value_pairs(list(request.factor_values))
 
             filter_ = CombinationFilter(
-                status=parse_status(status) if status is not None else None,
+                status=parse_status(request.status)
+                if request.status is not None
+                else None,
                 factor_values=tuple(
                     FactorValueAssignment(
                         factor_id=factor_id, factor_value_id=factor_value_id
                     )
-                    for factor_id, factor_value_id in factor_values
+                    for factor_id, factor_value_id in request.factor_values
                 ),
             )
-            return await db.combinations_reader.list_(table_id, filter_, page)
+            page = await db.combinations_reader.list_(
+                request.table_id, filter_, request.page
+            )
+            return ListCombinationsResponse(page=page)
 
     async def evaluate_combinations(
-        self,
-        table_id: int,
-        assignment: tuple[tuple[int, int], ...] = (),
-        page: PageRequest = PageRequest(),
-    ) -> EvaluateResult:
+        self, request: EvaluateCombinationsRequest
+    ) -> EvaluateCombinationsResponse:
         """Evaluate a (possibly partial) factor-value assignment against a
         decision table's combinations.
 
@@ -209,11 +237,11 @@ class CombinationsUseCases:
                 names a factor or value not on this table.
         """
         async with self._database.snapshot() as db:
-            table = await db.tables.get(table_id)  # see list_combinations above
+            table = await db.tables.get(request.table_id)  # see list_combinations above
             if table is None:
-                raise NotFoundError(f"Decision table {table_id} not found")
+                raise NotFoundError(f"Decision table {request.table_id} not found")
 
-            factor_ids = [factor_id for factor_id, _ in assignment]
+            factor_ids = [factor_id for factor_id, _ in request.assignment]
             seen: set[int] = set()
             for factor_id in factor_ids:
                 if factor_id in seen:
@@ -223,23 +251,27 @@ class CombinationsUseCases:
                     )
                 seen.add(factor_id)
 
-            table.validate_factor_value_pairs(list(assignment))
+            table.validate_factor_value_pairs(list(request.assignment))
 
             is_full = bool(table.factors) and len(seen) == len(table.factors)
 
             if is_full:
                 combination = await db.combinations_reader.find_by_exact_assignment(
-                    table_id, list(assignment)
+                    request.table_id, list(request.assignment)
                 )
-                return EvaluateResult(kind="single", combination=combination)
+                return EvaluateCombinationsResponse(
+                    kind="single", combination=combination
+                )
 
             filter_ = CombinationFilter(
                 factor_values=tuple(
                     FactorValueAssignment(
                         factor_id=factor_id, factor_value_id=factor_value_id
                     )
-                    for factor_id, factor_value_id in assignment
+                    for factor_id, factor_value_id in request.assignment
                 )
             )
-            result_page = await db.combinations_reader.list_(table_id, filter_, page)
-            return EvaluateResult(kind="list", page=result_page)
+            result_page = await db.combinations_reader.list_(
+                request.table_id, filter_, request.page
+            )
+            return EvaluateCombinationsResponse(kind="list", page=result_page)
