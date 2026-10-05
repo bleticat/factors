@@ -11,7 +11,8 @@ The core should grow by product capability, not by technical layer.
 ## Decision
 
 Use a feature-based ports-and-adapters structure under the `factors`
-package, split into `factors/features/` and `factors/shared/`:
+package, split into `factors/features/`, `factors/shared/`, and
+`factors/entrypoints/`:
 
 - `features/<context>/` — one folder per bounded context (`tables`,
   `rules`, `combinations`, `generation`), each owning its domain
@@ -36,9 +37,14 @@ package, split into `factors/features/` and `factors/shared/`:
   ports must name every feature's port types to type their own
   attributes (see ADR 004).
 
-`factors/main.py` (the FastAPI composition root) and `factors/config.py`
-sit directly under `factors/`, outside both `features/` and `shared/`,
-since they wire the two together rather than belonging to either.
+`entrypoints/` holds the ways this service is actually started — today
+just `server.py` (the FastAPI composition root: `create_app()`, CORS,
+exception handlers, every router included); a future CLI or worker
+process would get its own module here too, each wiring `features/` and
+`shared/` together for its own entry path rather than belonging to
+either. `factors/config.py` sits directly under `factors/`, alongside
+`features/`, `shared/`, and `entrypoints/`, since every one of those
+needs it.
 
 ## Alternatives
 
