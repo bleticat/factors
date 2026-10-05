@@ -1,14 +1,17 @@
 import pytest
 
-from app.generation.use_cases import GenerationUseCases, RequestGenerationRequest
-from app.shared.errors import InvariantViolationError
-from app.tables.use_cases import (
+from factors.features.generation.use_cases import (
+    GenerationUseCases,
+    RequestGenerationRequest,
+)
+from factors.features.tables.use_cases import (
     AddFactorRequest,
     AddFactorValueRequest,
     DeleteFactorRequest,
     TablesUseCases,
     UpdateFactorRequest,
 )
+from factors.shared.errors import InvariantViolationError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     build_standard_table,

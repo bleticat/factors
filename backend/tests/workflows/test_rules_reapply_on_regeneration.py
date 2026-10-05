@@ -1,9 +1,19 @@
-from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
-from app.generation.use_cases import GenerationUseCases, RequestGenerationRequest
-from app.generation.worker import run_generation_job
-from app.rules.use_cases import CreateRuleRequest, ListRulesRequest, RulesUseCases
-from app.shared.pagination import PageRequest
-from app.tables.use_cases import AddFactorValueRequest, TablesUseCases
+from factors.features.combinations.use_cases import (
+    CombinationsUseCases,
+    ListCombinationsRequest,
+)
+from factors.features.generation.use_cases import (
+    GenerationUseCases,
+    RequestGenerationRequest,
+)
+from factors.features.generation.worker import run_generation_job
+from factors.features.rules.use_cases import (
+    CreateRuleRequest,
+    ListRulesRequest,
+    RulesUseCases,
+)
+from factors.features.tables.use_cases import AddFactorValueRequest, TablesUseCases
+from factors.shared.pagination import PageRequest
 from tests.helpers import DEFAULT_TEST_MAX_COMBINATIONS, build_standard_table
 
 

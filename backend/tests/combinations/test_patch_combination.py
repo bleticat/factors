@@ -1,11 +1,11 @@
 import pytest
 
-from app.combinations.use_cases import (
+from factors.features.combinations.use_cases import (
     CombinationsUseCases,
     ListCombinationsRequest,
     PatchCombinationRequest,
 )
-from app.shared.errors import NotFoundError, ValidationError
+from factors.shared.errors import NotFoundError, ValidationError
 from tests.helpers import build_standard_table, generate_and_wait
 
 

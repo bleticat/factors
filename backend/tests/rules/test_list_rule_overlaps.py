@@ -1,10 +1,10 @@
-from app.rules.use_cases import (
+from factors.features.rules.use_cases import (
     CreateRuleRequest,
     ListRuleOverlapsRequest,
     ReorderRulesRequest,
     RulesUseCases,
 )
-from app.shared.pagination import PageRequest
+from factors.shared.pagination import PageRequest
 from tests.helpers import build_standard_table, generate_and_wait
 
 

@@ -1,13 +1,13 @@
 import pytest
 
-from app.shared.errors import NotFoundError, ValidationError
-from app.tables.use_cases import (
+from factors.features.tables.use_cases import (
     CreateDecisionTableRequest,
     DeleteDecisionTableRequest,
     GetDecisionTableRequest,
     TablesUseCases,
     UpdateDecisionTableRequest,
 )
+from factors.shared.errors import NotFoundError, ValidationError
 from tests.helpers import create_table
 
 

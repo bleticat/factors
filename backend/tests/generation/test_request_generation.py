@@ -1,9 +1,15 @@
 import pytest
 
-from app.combinations.use_cases import CombinationsUseCases, ListCombinationsRequest
-from app.generation.use_cases import GenerationUseCases, RequestGenerationRequest
-from app.shared.errors import InvariantViolationError
-from app.tables.use_cases import AddFactorRequest, TablesUseCases
+from factors.features.combinations.use_cases import (
+    CombinationsUseCases,
+    ListCombinationsRequest,
+)
+from factors.features.generation.use_cases import (
+    GenerationUseCases,
+    RequestGenerationRequest,
+)
+from factors.features.tables.use_cases import AddFactorRequest, TablesUseCases
+from factors.shared.errors import InvariantViolationError
 from tests.helpers import (
     DEFAULT_TEST_MAX_COMBINATIONS,
     add_factor_with_values,

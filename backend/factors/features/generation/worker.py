@@ -1,0 +1,46 @@
+import logging
+
+from factors.features.generation.entities import TERMINAL_STATUSES, GenerationJobStatus
+from factors.features.generation.use_cases import (
+    GenerateCombinationsBatchRequest,
+    GenerationUseCases,
+    MarkGenerationJobFailedRequest,
+)
+from factors.features.rules.use_cases import ReapplyRulesRequest, RulesUseCases
+from factors.shared.ports.database import Database
+
+logger = logging.getLogger(__name__)
+
+
+async def run_generation_job(database: Database, job_id: int, batch_size: int) -> None:
+    generation = GenerationUseCases(database)
+    while True:
+        try:
+            response = await generation.generate_combinations_batch(
+                GenerateCombinationsBatchRequest(job_id, batch_size)
+            )
+        except Exception as exc:
+            logger.exception("Generation batch failed for job %s", job_id)
+            try:
+                # The failing batch's own transaction already rolled back
+                # cleanly; the failure record needs its own fresh commit.
+                await generation.mark_generation_job_failed(
+                    MarkGenerationJobFailedRequest(job_id, str(exc))
+                )
+            except Exception:
+                logger.exception("Failed to record failure for job %s", job_id)
+            return
+
+        job = response.job
+        if job.status in TERMINAL_STATUSES:
+            if job.status == GenerationJobStatus.COMPLETED:
+                # Fresh combinations have no rule-driven output yet — replay
+                # this table's rules (spec 005) now that generation is done.
+                table_id = job.decision_table_id
+                try:
+                    await RulesUseCases(database).reapply_rules(
+                        ReapplyRulesRequest(table_id)
+                    )
+                except Exception:
+                    logger.exception("Rule reapply failed for table %s", table_id)
+            return

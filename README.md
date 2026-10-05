@@ -40,7 +40,7 @@ to reset.
 Two terminals:
 
 ```
-cd backend && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+cd backend && uv run alembic upgrade head && uv run uvicorn factors.main:app --reload
 cd frontend && npm run dev
 ```
 

@@ -15,4 +15,4 @@ EXPOSE 8000
 # docker-compose.yml overrides this with a migrate-then-serve command for
 # local dev (with --reload); this CMD is the plain fallback if the image is
 # run standalone.
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "factors.main:app", "--host", "0.0.0.0", "--port", "8000"]
