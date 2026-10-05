@@ -1,5 +1,5 @@
-// Mirrors the shapes the backend's use cases return (backend/app/*/entities.py,
-// backend/app/*/use_cases.py) — most of these are the actual domain
+// Mirrors the shapes the backend's use cases return (backend/factors/features/*/entities.py,
+// backend/factors/features/*/use_cases.py) — most of these are the actual domain
 // entity/aggregate, not a separate read-only shadow of it.
 
 export interface FactorValue {
