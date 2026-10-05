@@ -1,4 +1,4 @@
-"""The `Database` port (ADR 004, refined by ADR 008).
+"""The `Database` port (ADR 004).
 
 `Database` is the only thing use-case classes need to do their work: it
 opens a `DataAccess` — one object holding every module's write-side
@@ -41,9 +41,8 @@ This means this module imports every module's `ports/` (for these type
 annotations) — a deliberate, acknowledged relaxation of ADR 003's "shared/
 must not hold domain behavior that belongs to one context": this app is
 genuinely one bounded context split into modules for file size, not several
-true DDD-separate contexts. See ADR 007 (and ADR 008, which refines it) for
-why that's its own recorded decision rather than letting ADR 003 quietly go
-stale.
+true DDD-separate contexts. See ADR 004 for why that's its own recorded
+decision rather than letting ADR 003 quietly go stale.
 """
 
 from contextlib import AbstractAsyncContextManager

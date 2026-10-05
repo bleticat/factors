@@ -1,5 +1,5 @@
-"""SQLAlchemy async implementation of the `Database` port. Per ADR 008,
-`Database` no longer holds any long-lived reader instances — each
+"""SQLAlchemy async implementation of the `Database` port (ADR 004).
+`Database` holds no long-lived reader instances — each
 `transaction()`/`snapshot()` call opens its own session and builds a fresh
 `SqlAlchemyDataAccess` bound to it, so there is nothing left to wire up at
 construction time beyond the engine's session factory.

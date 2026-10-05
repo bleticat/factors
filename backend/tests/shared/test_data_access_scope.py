@@ -1,6 +1,6 @@
 """Database-port contract tests (ADR 005's "database-port contract tests
 are allowed when infrastructure behavior is the subject of the test") for
-the guard ADR 008 added: a `DataAccess` must not be usable once the
+the guard ADR 004 describes: a `DataAccess` must not be usable once the
 `transaction()`/`snapshot()` block that produced it has exited.
 """
 

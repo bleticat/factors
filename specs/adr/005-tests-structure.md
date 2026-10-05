@@ -1,61 +1,52 @@
 # 005. Tests Structure
 
-Date: 2026-05-30
+Date: 2026-10-05
 
 Status: Active
 
 ## Context
 
-Core behavior depends on command/query services, ports, and persistence boundaries working together.
-
-Most useful tests should verify those boundaries, not isolated implementation details.
+Core behavior depends on use cases, ports, and persistence boundaries
+working together. Most useful tests should verify those boundaries, not
+isolated implementation details.
 
 ## Decision
 
-Use mostly integration-style tests for core use-case behavior.
+Use mostly integration-style tests for core use-case behavior. Each test
+gets its own fresh database (migrated via Alembic `upgrade head`, not
+`create_all`), destroyed after; tests must not depend on state created by
+another test.
 
-Each test initializes its own database and destroys it within the test lifecycle. Tests must not depend on state created by another test.
+Tests call the same `XUseCases(database)` classes application code uses
+— built directly over a real `SqlAlchemyDatabase`, never mocked — so they
+exercise the same lifecycle as production. Each use-case test focuses on
+one command or query `Request`/`Response` pair as the behavior under
+test; workflow tests may compose a command and a query to verify
+read-after-write, or another explicitly named workflow.
 
-Tests should prefer calling the same module `Commands`/`Queries` services (built via `app.composition`'s factory functions, over a real database) that application code uses, so they exercise the same lifecycle as application code.
-
-Each use-case behavior test should focus on one command request or one query request as the behavior under test. Workflow tests may compose a command and a query when verifying read-after-write behavior or another explicitly specified workflow.
-
-Handler-level tests are allowed when useful, but use-case behavior tests must not call adapters or repositories directly as the behavior under test.
-
-Adapter, repository, migration, and database-port contract tests are allowed when infrastructure behavior is the subject of the test. These tests should still use isolated database state and should not duplicate use-case behavior tests.
-
-Test folder structure should mirror bounded-context separation. A context's tests live in the matching test module or folder.
-
-Shared test helpers are allowed when they reduce setup noise, but they must not hide the command or query request being tested.
+Adapter, repository, migration, and database-port contract tests are
+allowed when infrastructure behavior (not use-case behavior) is the
+subject. Test folders mirror the bounded-context folders. Shared test
+helpers (`tests/helpers.py`) are allowed to cut setup noise but must never
+hide the use-case call under test.
 
 ## Alternatives
 
-- Prefer isolated unit tests with mocked repositories. This is faster but can miss persistence, mapping, composition-root wiring, and transaction bugs.
-- Test mostly through the UI or Tauri boundary. This verifies full flows but makes failures harder to localize.
-- Reuse one database across tests. This is faster but risks order-dependent tests and hidden shared state.
+- Prefer isolated unit tests with mocked repositories. Faster, but can
+  miss persistence, mapping, and transaction-scope bugs.
+- Reuse one database across tests. Faster, but risks order-dependent
+  tests and hidden shared state.
 
 ## Pros
 
-Tests exercise the same core ports and command/query service lifecycle used by application code.
-
-Fresh databases keep tests independent and repeatable.
-
-Mirrored folders make test ownership obvious.
-
-Command and query tests stay aligned with the core architecture.
+Tests exercise the same ports and use-case lifecycle as production code;
+fresh databases keep them independent and repeatable.
 
 ## Cons
 
-Integration-style tests are slower than pure unit tests.
-
-Per-test database setup adds boilerplate.
-
-Helpers need discipline so tests still show the behavior under test clearly.
-
-Infrastructure contract tests add another test category to maintain.
+Slower than pure unit tests; per-test database setup adds boilerplate.
 
 ## Links to Related ADRs
 
 - Depends on: [003. Project Structure](./003-project-structure.md)
 - Depends on: [004. Database Interactions](./004-database-interactions.md)
-- Used by: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)

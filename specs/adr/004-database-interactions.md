@@ -1,70 +1,82 @@
 # 004. Database Interactions
 
-Date: 2026-05-30
+Date: 2026-10-05
 
 Status: Active
 
 ## Context
 
-Bounded contexts need persistence without depending on database drivers or storage details.
-
-Writes also need consistent transaction boundaries. Reads need room for optimized query shapes.
-
-Boundary layers (API routes, the background worker, the startup sweep, tests) should not construct repositories or adapters directly — the composition root is the one place that knows concrete adapter classes.
+Bounded contexts need persistence without depending on database drivers
+or storage details, with transaction boundaries that are hard to get
+wrong and cheap to extend — including from workflows that genuinely need
+more than one transaction (crash-safe batching, an independent
+failure-record commit).
 
 ## Decision
 
-Access persistence through a shared core `Database` port and the composition root's factory functions.
+A single `Database` port in `shared/` is the only way use-case code
+touches persistence. It exposes two ways to open a `DataAccess`:
 
-The database is a port in `shared/`. It owns access to persistence resources but must not expose module-specific command/query types or service classes.
+- `transaction()` — commits on clean exit, rolls back on exception. For a
+  write (plus any reads it needs along the way).
+- `snapshot()` — always rolls back, never commits. For a read-only method,
+  especially one making more than one read that must agree with each
+  other.
 
-For writes, the caller opens a `unit_of_work()`, passes it to the relevant module's `build_*_commands` factory (in `app/composition.py`) to get a fully-wired `Commands` service, and calls a method on it.
+A `DataAccess` holds every module's write-side repository (`db.tables`,
+`db.rules`, `db.combinations`, `db.jobs`) *and* read-side reader
+(`db.tables_reader`, ...) bound to the same session — so a read inside one
+`async with` block always sees that block's own uncommitted writes, and a
+use case opens as many `transaction()`/`snapshot()` blocks as it genuinely
+has independent-commit steps (no "one call = one transaction" constraint
+enforced by the port). A `DataAccess` is only valid inside the block that
+opened it: every attribute on it is replaced with a sentinel the instant
+the block exits, so a reference kept past its scope raises immediately
+instead of silently running against an already-closed session.
 
-The unit-of-work lifecycle owns transaction behavior: commit on success, rollback on failure.
+Repositories are write-side ports: load the aggregate whole, mutate in
+memory, save whole. Readers are read-side ports for query shapes a
+repository's own `get()` can't give cheaply (filtered/paginated lists,
+cross-module overlap queries, list-view projections that skip loading a
+full aggregate). Where a reader's query would just return the exact same
+entity a repository's `get()` already does, there is no separate reader
+method — callers use the repository for both reads and writes.
 
-For reads, the caller opens a `read_scope()`, passes it to the module's `build_*_queries` factory, and calls a method on the resulting `Queries` service. Adapters may use read-only transactions or connection snapshots when needed, but queries must not own commit or rollback of business writes — `read_scope()` always rolls back on exit, even if a query mistakenly writes through it.
-
-A command followed by a query in the same workflow must read the committed result of that command from the primary read path. If a later decision introduces read replicas, projections, or async read models, that decision must state where read-your-writes is required and where eventual consistency is acceptable.
-
-Repositories are write-side ports for loading, saving, and deleting domain entities inside a transaction.
-
-Queries are read-side ports and query services. They may use optimized joins, projections, filters, or read models without changing command services or repository APIs.
-
-Concrete database code lives in adapters. Domain code, command/query services, and the composition root's factory functions depend on ports, not adapter internals — except that a module's own adapters depend on that module's own concrete adapter classes directly, which is expected (see ADR 003's "ports/entities cross module lines, adapters don't").
+The concrete `SqlAlchemyDatabase`/`SqlAlchemyDataAccess` (in
+`shared/adapters/`) are the only place that imports every module's
+concrete adapter classes to wire them together — a deliberate exception
+to ADR 003's "`shared/` holds no domain behavior," justified because this
+app is genuinely one bounded context (the four modules are organizational,
+not separate DDD contexts with independent data ownership).
 
 ## Alternatives
 
-- Let command/query services use database drivers directly. This is simpler at first but couples core behavior to storage details.
-- Manage transactions in boundary layers by hand at every call site. This gives callers control but makes transaction safety depend on each call site remembering to do it correctly.
-- Put module-specific factories directly on the concrete database adapter. This keeps the composition root smaller but turns the database into a use-case registry.
+- Route every call through a composition-root factory function that
+  builds a module's command/query service per call from a `UnitOfWork`.
+  Rejected: added ceremony for every new cross-module dependency, and
+  still needed a separate escape hatch for multi-transaction workflows.
+- Give `Database`/`DataAccess` no attribute-level guard and trust callers
+  to use a `db` reference only inside its own block. Rejected: a leaked
+  reference would silently keep working against a session already
+  returned to the pool — worth a loud, immediate failure instead.
 
 ## Pros
 
-Write behavior gets automatic transaction boundaries.
-
-Command/query services stay focused on use-case behavior.
-
-Queries can be tuned for read needs without complicating writes.
-
-The database port stays small and does not need to know every module's use cases.
-
-Database technology can change behind adapters.
-
-Tests can use the same database port and composition-root factories as production code.
+One pattern (`async with self._database.transaction()/snapshot() as db:`)
+for every use-case method; a write-then-read in the same method is
+correct by construction (same session, same block); use-case code never
+imports SQLAlchemy or a concrete adapter class, only the abstract
+repository/reader port each `db` attribute is typed with.
 
 ## Cons
 
-There are more abstractions than direct database calls.
-
-Read and write paths may duplicate some mapping code.
-
-Callers must remember to open the right kind of scope (`unit_of_work()` vs `read_scope()`) — there is no automatic dispatch enforcing this; see the "Alternatives" in the (now-removed) mediator-based design this replaced.
-
-Read-after-write behavior needs explicit care if optimized read models or replicas are introduced later.
+`shared/ports/database.py` and `shared/adapters/sqlalchemy_database.py`
+depend on every module's ports/adapters — a wider footprint than ADR 003
+otherwise calls for. Nothing stops a use-case method from opening the
+wrong number of transactions; that's trusted, not enforced.
 
 ## Links to Related ADRs
 
-- Depends on: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Depends on: [002. Commands, Queries, and Their Request/Response Contract](./002-commands-queries-and-request-response.md)
 - Constrained by: [003. Project Structure](./003-project-structure.md)
 - Used by: [005. Tests Structure](./005-tests-structure.md)
-- Refined by: [007. Database Holds Repositories and Queries](./007-database-holds-repositories-and-queries.md)
