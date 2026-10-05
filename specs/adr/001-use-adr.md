@@ -1,56 +1,54 @@
 # 001. Use Architecture Decision Records
 
-Date: 2026-05-30
+Date: 2026-10-05
 
 Status: Active
 
 ## Context
 
-We use spec-driven development. Important decisions need a durable repo-local record near specs and code.
+Architectural decisions need a durable, repo-local record near the code
+they shape. Product behavior is covered by the code and its tests, not by
+separate written specs — this project keeps no feature-spec documents.
 
 ## Decision
 
-Record architectural and product-shaping decisions as ADRs in `specs/adr/`.
-
-ADRs should stay small enough that reading all of them remains practical.
+Record architectural decisions as ADRs in `specs/adr/`, kept small enough
+that reading all of them stays practical.
 
 Rules:
 
-1. Name files `NNN-short-title.md`. Use `000-template.md` only for the ADR template.
-2. Use the next unused number. Do not renumber old ADRs.
-3. Keep one decision per ADR.
-4. Use these sections:
-   - `# NNN. Title`
-   - `Date: YYYY-MM-DD`
-   - `Status: Active` or `Status: Superseded by [NNN. Title](./NNN-title.md)`
-   - `## Context`
-   - `## Decision`
-   - `## Alternatives` when useful
-   - `## Pros`
-   - `## Cons`
-   - `## Links to Related ADRs` when related ADRs exist
-5. Put `## Links to Related ADRs` at the bottom so the decision and consequences stay first.
-6. Link only direct ADR dependencies or decisions this ADR directly refines, constrains, supersedes, or enables.
-7. Label ADR links with the relationship, for example `Depends on`, `Used by`, `Constrains`, `Constrained by`, `Refines`, `Refined by`, `Supersedes`, or `Superseded by`. Avoid broad `Related` links for indirect alignment.
-8. ADR links must be bidirectional.
-9. Mention effects on specs, implementation, tests, migrations, and operations when relevant.
-10. Link related specs, issues, PRs, code, and ADRs instead of copying long material.
-11. Treat ADRs as historical records. Use a new ADR for changed decisions.
+1. Name files `NNN-short-title.md` (`000-template.md` is reserved for the
+   template). Use the next unused number for a new ADR; don't renumber
+   existing ones — except during a deliberate, occasional snapshot pass
+   (like this one) that squashes a chain of superseded decisions into
+   whichever ADR is actually current, since this project has no other
+   readers who need the superseded trail preserved.
+2. One decision per ADR.
+3. Sections, in order: `# NNN. Title`, `Date`, `Status`, `## Context`,
+   `## Decision`, `## Alternatives` (when useful), `## Pros`, `## Cons`,
+   `## Links to Related ADRs` (when related ADRs exist).
+4. Label links with the relationship (`Depends on`, `Used by`,
+   `Constrains`/`Constrained by`, `Refines`/`Refined by`,
+   `Supersedes`/`Superseded by`) and keep them bidirectional.
+5. Link related issues, PRs, and code instead of copying long material.
+6. Outside of a snapshot pass, treat ADRs as historical records — write a
+   new one for a changed decision rather than editing an old one in place.
 
 ## Alternatives
 
-- Keep decisions in issues, PRs, or commit messages only. This keeps documentation lighter but makes old decisions harder to discover from the repo.
-- Use a heavier ADR format with mandatory owners, status history, and full alternatives. This captures more nuance but makes small decisions more expensive to record.
-- Put ADRs in external documentation. This can help broader audiences but increases the chance that decisions drift away from code and specs.
+- Keep decisions in issues, PRs, or commit messages only. Lighter, but
+  makes old decisions harder to discover from the repo.
+- Write a feature spec per behavior change, kept alongside the ADRs.
+  Rejected: with one developer and the behavior already covered by code
+  and tests, a second written description of the same behavior is pure
+  upkeep cost.
 
 ## Pros
 
-Decisions become discoverable and reviewable with the code.
-
-Small ADRs stay cheap to write and quick to read as a set.
+Decisions are discoverable and reviewable with the code; small ADRs stay
+cheap to write and read as a set.
 
 ## Cons
 
-This adds a documentation step for architectural work.
-
-Status, date, and alternatives add a little more writing to each ADR.
+A documentation step for architectural work; the occasional snapshot pass
+is itself work.

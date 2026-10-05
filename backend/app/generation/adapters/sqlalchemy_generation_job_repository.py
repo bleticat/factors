@@ -49,7 +49,7 @@ class SqlAlchemyGenerationJobRepository(GenerationJobRepository):
         # SQLite has no row-level SELECT ... FOR UPDATE; the single-writer
         # transaction model plus reading fresh within this command's own
         # unit of work is what gives GenerateCombinationsBatchCommand a
-        # consistent view of live status/cursor (see ADR 004/007 + the
+        # consistent view of live status/cursor (see ADR 004 + the
         # generation feature spec).
         return await self.get(job_id)
 

@@ -8,8 +8,7 @@ output, with bulk edits) or save a wildcard **rule** (values for some factors,
 affected-row count shown, and re-applied automatically on regeneration), then
 evaluate the table by factor→value assignment.
 
-See `specs/adr/` for the governing architecture decisions and
-`specs/features/decision_tables/` for the feature specs.
+See `specs/adr/` for the governing architecture decisions.
 
 ## Running locally
 
