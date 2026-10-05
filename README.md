@@ -8,7 +8,8 @@ output, with bulk edits) or save a wildcard **rule** (values for some factors,
 affected-row count shown, and re-applied automatically on regeneration), then
 evaluate the table by factor→value assignment.
 
-See `specs/adr/` for the governing architecture decisions.
+See `specs/adr/` for the governing architecture decisions and
+`ROADMAP.md` for what's left before a 1.0 release.
 
 ## Running locally
 
