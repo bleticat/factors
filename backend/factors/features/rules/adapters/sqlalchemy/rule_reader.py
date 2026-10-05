@@ -2,8 +2,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.rules.adapters.orm import RuleRow
-from factors.features.rules.adapters.sqlalchemy_rule_repository import row_to_rule
+from factors.features.rules.adapters.sqlalchemy.orm import RuleRow
+from factors.features.rules.adapters.sqlalchemy.rule_repository import row_to_rule
 from factors.features.rules.entities import Rule
 from factors.features.rules.ports.rule_reader import RuleReader
 from factors.shared.pagination import Page, PageRequest

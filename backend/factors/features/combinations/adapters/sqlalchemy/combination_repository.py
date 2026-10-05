@@ -2,10 +2,10 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from factors.features.combinations.adapters.combination_filters import (
+from factors.features.combinations.adapters.sqlalchemy.combination_filters import (
     apply_combination_filter,
 )
-from factors.features.combinations.adapters.orm import (
+from factors.features.combinations.adapters.sqlalchemy.orm import (
     CombinationRow,
     CombinationValueRow,
 )

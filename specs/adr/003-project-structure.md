@@ -22,9 +22,14 @@ package, split into `factors/features/` and `factors/shared/`:
   - `ports/` — an abstract write-side repository and an abstract
     read-side reader, plus any value types a reader's query shape
     genuinely needs (not a mirror of an entity).
-  - `adapters/` — concrete (SQLAlchemy) implementations of those ports
-    and the module's ORM row mappings.
-  - `api/` — FastAPI routes and request-body schemas.
+  - `adapters/` — every concrete implementation of this feature's ports,
+    one subfolder per driving/driven technology: `adapters/sqlalchemy/`
+    (the repository/reader implementations and the module's ORM row
+    mappings) and `adapters/fastapi/` (routes and request-body schemas).
+    A FastAPI route handler is exactly as much an adapter as a
+    SQLAlchemy repository is — both are a concrete technology plugged
+    into the same ports — so neither gets a top-level folder of its own
+    alongside `adapters/`.
 - `shared/` — cross-context infrastructure only (the `Database` port,
   shared errors, pagination) — never domain behavior belonging to one
   context, with one acknowledged exception: the `Database`/`DataAccess`

@@ -7,11 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from factors.config import settings
-from factors.features.combinations.api.routes import router as combinations_router
-from factors.features.generation.api.routes import router as generation_router
+from factors.features.combinations.adapters.fastapi.routes import (
+    router as combinations_router,
+)
+from factors.features.generation.adapters.fastapi.routes import (
+    router as generation_router,
+)
 from factors.features.generation.startup_sweep import sweep_stale_generation_jobs
-from factors.features.rules.api.routes import router as rules_router
-from factors.features.tables.api.routes import router as tables_router
+from factors.features.rules.adapters.fastapi.routes import router as rules_router
+from factors.features.tables.adapters.fastapi.routes import router as tables_router
 from factors.shared.adapters.sqlalchemy_database import (
     SqlAlchemyDatabase,
     create_engine,
